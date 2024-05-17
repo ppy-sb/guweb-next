@@ -8,6 +8,10 @@ const id = route.params.id
 const app$ = useNuxtApp()
 const data = await app$.$client.score.id.query({ id })
 
+definePageMeta({
+  alias: ['/scores/:id'],
+})
+
 useHead({
 
   title() {
