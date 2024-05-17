@@ -30,7 +30,7 @@ export default {
   rank: {
     [Rank.PPv2]: 'Performance(v2)',
     [Rank.PPv1]: 'Performance(v1)',
-    [Rank.RankedScore]: 'Punktzahl auf Rangliste',
+    [Rank.RankedScore]: 'Ranked Punktzahl',
     [Rank.TotalScore]: 'Gesamtpunktzahl',
     [Rank.Score]: 'Punktzahl',
   },
