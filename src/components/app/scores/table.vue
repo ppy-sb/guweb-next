@@ -38,6 +38,12 @@ fr-FR:
   actions: Actions
   detail: Detail
   replay: Replay
+
+de-DE:
+  no-score: Kein Score gefunden.
+  actions: Aktionen
+  detail: Detail
+  replay: Replay
 </i18n>
 
 <template>

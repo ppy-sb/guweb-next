@@ -28,6 +28,11 @@ fr-FR:
   stored-at:
     0: Sauvegardé localement
     1: Sauvegardé sur serveur
+
+de-DE:
+  stored-at:
+    0: Lokal gespeichert
+    1: Auf Server gespeichert
 </i18n>
 
 <template>

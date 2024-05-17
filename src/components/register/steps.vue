@@ -29,6 +29,11 @@ fr-FR:
   verify-email: Verify email
   create-account: Create account
   login-with-client: Login
+
+de-DE:
+  verify-email: Email Verifizieren
+  create-account: Account erstellen
+  login-with-client: Einloggen
 </i18n>
 
 <template>

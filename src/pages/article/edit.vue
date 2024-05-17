@@ -186,6 +186,19 @@ fr-FR:
   read-access: Accès à la Lecture
   write-access: Accès à l'Écriture
   selecting: Sélectionner
+
+de-DE:
+  editing: Bearbeiten
+  load: Laden
+  new: Neu
+  save: Speichern
+  delete: Löschen
+  import: Importieren
+  export: Exportieren
+  dynamic-content: Dynamischer Inhalt
+  read-access: Lesezugriff
+  write-access: Schreibzugriff
+  selecting: Auswählen
 </i18n>
 
 <template>

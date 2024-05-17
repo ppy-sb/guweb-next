@@ -109,6 +109,15 @@ fr-FR:
   banned: Ce compte a été restreint.
   self-banned: Votre compte a été restreint. La visibilité de votre profil est limitée à vous-même et au personnel de {server}.
   mode-no-data: Le joueur n'a pas encore joué à ce mode.
+
+de-DE:
+  error-occurred: Oops...
+  unknown-error: Es ist ein Fehler gesperrt.
+  back: Zurück
+  retry: Erneut versuchen
+  banned: Dieses Konto wurde gesperrt.
+  self-banned: Dein Konto wurde gesperrt. Die Sichtbarkeit deines Profils ist auf dich und das Personal von {server} beschränkt.
+  mode-no-data: Der Spieler hat diesen Modus noch nicht gespielt.
 </i18n>
 
 <template>

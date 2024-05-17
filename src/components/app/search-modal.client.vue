@@ -25,6 +25,15 @@ fr-FR:
     pages: Pages
   search: Cherche...
   nothing: Aucun résultat.
+
+de-DE:
+  include:
+    beatmapsets: Beatmapsets
+    beatmaps: Beatmaps
+    users: Benutzer
+    pages: Seiten
+  search: Suche...
+  nothing: Nichts gefunden.
 </i18n>
 
 <script setup lang="ts">

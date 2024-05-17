@@ -94,6 +94,11 @@ fr-FR:
   have-account: Vous avez déjà un compte?
   lgtm: LGTM!
   invalid-otp: Invalid OTP
+
+de-DE:
+  have-account: Haben Sie bereits ein Konto?
+  lgtm: LGTM!
+  invalid-otp: Falsches OTP
 </i18n>
 
 <template>

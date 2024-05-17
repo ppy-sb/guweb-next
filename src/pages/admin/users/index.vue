@@ -105,6 +105,20 @@ fr-FR:
   registered-at: Registered at
   last-activity: Last activity record
   search-btn: Search
+de-DE:
+  user: Nutzer
+  search-parameters: Such-Parameter
+  page: Seite
+  page-size: Seiten Anzahl
+  user-id: Nutzer ID
+  username: Nutzername
+  link-name: Link-Adresse (Sicherer Name)
+  email: Email
+  flag: Flagge
+  roles: Rollen
+  registered-at: Registriert am
+  last-activity: Letzte Aktivität
+  search-btn: Suchen
 </i18n>
 
 <template>

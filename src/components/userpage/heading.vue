@@ -114,6 +114,16 @@ fr-FR:
   add-as-friend: Ajouter en ami(e)
   supporter: A généreusement supporté {server}!
   staff: 'Veille sur {server}'
+
+de-DE:
+  status:
+    offline: Offline, zuletzt gesehen am {lastSeen}
+    idle: Online.
+    afk: AFK
+  edit: Bearbeiten
+  add-as-friend: Als Freund hinzufügen
+  supporter: Hat {server} großzügig unterstützt!
+  staff: 'Hält {server} online'
 </i18n>
 
 <template>

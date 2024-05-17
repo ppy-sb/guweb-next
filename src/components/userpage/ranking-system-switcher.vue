@@ -49,6 +49,9 @@ zh-CN:
 
 fr-FR:
   folded-ranking-system: Autres Classements
+
+de-DE:
+  folded-ranking-system: Andere Ränge
 </i18n>
 
 <template>

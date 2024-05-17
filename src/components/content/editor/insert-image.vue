@@ -55,6 +55,12 @@ fr-FR:
   description: Description
   ok: Confirmer
   cancel: Annuler
+
+de-DE:
+  title: Title
+  description: Beschreibung
+  ok: Bestätigen
+  cancel: Abbrechen
 </i18n>
 
 <template>

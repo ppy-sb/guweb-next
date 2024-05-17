@@ -27,6 +27,9 @@ zh-CN:
 
 fr-FR:
   logging-out: Déconnexion...
+
+de-DE:
+  logging-out: Abmelden...
 </i18n>
 
 <template>

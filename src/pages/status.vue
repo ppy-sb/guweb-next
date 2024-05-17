@@ -102,6 +102,21 @@ fr-FR:
   app-config: Configuration App
   npm-env: Environnement npm
   env: Environnement
+
+de-DE:
+  system-load: Systemlast
+  user: Nutzer
+  system: System
+  app-load: App-Last
+  total: Gesamt
+  other: Andere
+  memory: Speicher
+  active: Aktiv
+  cache: Cache
+  free: Frei
+  app-config: App-Konfiguration
+  npm-env: npm-Umgebung
+  env: Umgebung
 </i18n>
 
 <template>

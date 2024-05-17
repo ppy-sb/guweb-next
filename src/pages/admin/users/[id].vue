@@ -131,6 +131,16 @@ fr-FR:
   flag: Drapeau
   roles: Rôles
   save-btn: Enregistrer
+de-DE:
+  id: ID
+  stable-client-id: Stabile Client-ID
+  name: Name
+  link-name: Link-Adresse (Sicherer Name)
+  password: Passwort
+  email: E-Mail
+  flag: Flagge
+  roles: Rollen
+  save-btn: Speichern
 </i18n>
 
 <template>

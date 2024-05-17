@@ -86,6 +86,13 @@ fr-FR:
   user-id-email: Utilisateur / ID / Email
   password: Mot de passe
   persist-login: Se souvenir de moi
+
+de-DE:
+  have-no-account: Sie haben kein Konto?
+  user-or-email: Nutzername / E-Mail
+  user-id-email: Nutzername / ID / E-Mail
+  password: Passwort
+  persist-login: Passwort speichern
 </i18n>
 
 <template>

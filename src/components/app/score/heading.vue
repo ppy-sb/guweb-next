@@ -50,6 +50,12 @@ fr-FR:
   map: '{version} créé par {creator}'
   play: '{player} joué le {time}'
   download-replay: Télécharger le replay
+
+de-DE:
+  title: "{title}\nvon {artist}"
+  map: "{version}\nerstellt von {creator}"
+  play: '{player} spielte am {time}'
+  download-replay: Replay herunterladen
 </i18n>
 
 <template>

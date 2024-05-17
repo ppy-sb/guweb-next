@@ -31,6 +31,9 @@ zh-CN:
 
 fr-FR:
   to-userpage: Mon profil
+
+de-DE:
+  to-userpage: zum Profil
 </i18n>
 
 <template>

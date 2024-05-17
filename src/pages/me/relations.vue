@@ -117,6 +117,16 @@ fr-FR:
   you-may-also-wonder: Vous pourriez également vous demander...
   not-mutual-friends: Ces personnes vous ont ajouté en tant qu'ami.
   mutual: Mutuel
+
+de-DE:
+  loading: Lade...
+  err-message: Etwas ist schief gelaufen.
+  user-not-found: Nutzer existiert nicht.
+  remove-friend: Entfernen
+  regret: Vergeben
+  you-may-also-wonder: Du könntest dich auch fragen...
+  not-mutual-friends: Diese Personen haben dich als Freund hinzugefügt.
+  mutual: Mutual
 </i18n>
 
 <template>

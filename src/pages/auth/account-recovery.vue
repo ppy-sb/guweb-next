@@ -155,6 +155,12 @@ zh-CN:
 # TODO fr translation
 fr-FR:
   invalid-otp: Invalid OTP
+
+de-DE:
+  next: Weiter
+  invalid-otp: Falsches OTP
+  repeat-password: Passwort wiederholen
+  done: Fertig
 </i18n>
 
 <template>

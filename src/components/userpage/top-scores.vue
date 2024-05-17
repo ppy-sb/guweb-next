@@ -179,6 +179,10 @@ zh-CN:
 fr-FR:
   top: Premières places
   loading: Chargement des Scores...
+
+de-DE:
+  top: Top Ränge
+  loading: Lade Top Scores...
 </i18n>
 
 <template>

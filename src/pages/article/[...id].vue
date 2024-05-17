@@ -20,6 +20,9 @@ zh-CN:
 
 fr-FR:
   edit: Modifier
+
+de-DE:
+  edit: Bearbeiten
 </i18n>
 
 <template>

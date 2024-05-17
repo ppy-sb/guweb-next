@@ -168,6 +168,9 @@ zh-CN:
 
 fr-FR:
   bp: Meilleures Performances
+
+de-DE:
+  bp: Beste Ergebnisse
 </i18n>
 
 <template>

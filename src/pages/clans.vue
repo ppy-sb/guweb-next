@@ -70,6 +70,11 @@ zh-CN:
 
 # TODO fr translation
 # fr-FR:
+
+de-DE:
+  search-text: Badges, Namen suchen ...
+  search: Suchen
+  avg: Durchschnitt
 </i18n>
 
 <template>

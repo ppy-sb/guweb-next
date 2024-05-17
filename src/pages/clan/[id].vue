@@ -113,6 +113,13 @@ zh-CN:
   member: 组员
   members: 组员
   clan-best-scores: 最好成绩
+
+de-DE:
+  owner: Besitzer
+  created-at: Erstellt am
+  member: Mitglied
+  members: Mitglieder
+  clan-best-scores: Beste Ergebnisse
 </i18n>
 
 <template>

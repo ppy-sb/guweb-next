@@ -109,6 +109,11 @@ zh-CN:
 fr-FR:
   no-score: Personne n'a joué ce mode encore.
   no-score-alt: Vous voulez être le premier? Allez-y.
+
+de-DE:
+  no-score: Noch niemand hat diesen Modus gespielt.
+  no-score-alt: Möchtest du der Erste sein? Los geht's.
+  total: '{total} Zeilen'
 </i18n>
 
 <template>

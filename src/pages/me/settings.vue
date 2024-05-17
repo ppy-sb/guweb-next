@@ -528,6 +528,58 @@ fr-FR:
     actions: Action
     current: vous
     kick: Exclure
+
+de-DE:
+  reset: Zurücksetzen
+
+  preferences: Einstellungen
+  username: Benutzername
+  safe-name: Link
+  email: E-Mail
+  flag: Flagge
+  profile: Profil
+  default-mode: Standardmodus
+
+  status:
+    done: Fertig!
+    ready: Speichern
+
+  avatar:
+    change: Ändern
+    size-too-big: Datei zu groß
+    upload:
+      click-to-upload: Klicken zum Hochladen
+      placement: '{bold} oder Datei hierhin ziehen'
+      bold: Hochladen
+    status:
+      ready: Speichern
+      uploading: Hochladen
+      done: Fertig
+      abort: Abbrechen
+
+  password:
+    change: Ändern
+    literal: Passwort
+    new-password-mismatch: Neues Passwort stimmt nicht überein
+    same-password-as-old: Neues Passwort ist identisch
+    old-password: Altes Passwort
+    new-password: Neues Passwort
+    repeat-password: Passwort wiederholen
+    ok: Bestätigen
+    abort: Abbrechen
+
+  api-key:
+    literal: API-Schlüssel
+    placeholder: Ihr API-Schlüssel
+    request: Anfordern
+    refresh: Neuen anfordern
+
+  session:
+    device: Gerät
+    last-activity: Zuletzt gesehen
+    actions: Aktionen
+    current: Du
+    kick: Abmelden
 </i18n>
 
 <template>

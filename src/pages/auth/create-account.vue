@@ -173,6 +173,14 @@ fr-FR:
   name-pattern: Ne doit pas contenir de lettre majuscule, ni commencer ou se terminer par _, doit contenir uniquement des chiffres, a-z et _
   link: Nom d'utilisateur
   password-pattern: Doit contenir au moins un chiffre et une lettre majuscule et minuscule, et au moins 8 caractères.
+
+deDE:
+  key-required: '{key} darf nicht leer sein.'
+  key-taken: '{key} ist bereits vergeben.'
+  name: Benutzername (kann später geändert werden)
+  name-pattern: Darf keine Großbuchstaben enthalten, darf nicht mit _ beginnen oder enden, enthält nur Zahlen, a-z und _
+  link: Benutzername
+  password-pattern: Muss mindestens eine Zahl und einen Groß- und Kleinbuchstaben enthalten und mindestens 8 oder mehr Zeichen lang sein.
 </i18n>
 
 <template>

@@ -220,6 +220,28 @@ fr-FR:
       circles: cercles
       sliders: sliders
       spinners: spinners
+
+de-DE:
+  beatmapset:
+    placement: '{title} von {artist}'
+    external-links: Externe Links
+    direct-downloads: Direkter Download
+    creator: Ersteller
+    status: Status
+    beatmap-id: Beatmap ID
+    source-id: Quelle | ID
+    last-update: Letztes Update
+    star-rating: Sternebewertung
+    circle-size: CS
+    approach-rate: AR
+    od: OD
+    hp-drain: HP-Drain
+    duration: Dauer
+    hit-objects: Hit-Objekte
+    hit-object:
+      circles: Circles
+      sliders: Sliders
+      spinners: Spinner
 </i18n>
 
 <template>
