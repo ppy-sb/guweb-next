@@ -113,6 +113,11 @@ export default defineNuxtConfig({
         name: 'French (France)',
       },
       {
+        code: Lang.deDE,
+        flag: CountryCode.Germany,
+        name: 'Deutsch (Deutschland)',
+      },
+      {
         code: Lang.zhCN,
         flag: CountryCode.China,
         name: '简体中文 (中国)',
