@@ -11,5 +11,8 @@ export function every<T>(input: T) {
     [Lang.zhCN]: {
       ...input,
     },
+    [Lang.deDE]: {
+      ...input,
+    },
   }
 }

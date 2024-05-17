@@ -11,6 +11,7 @@ export enum Lang {
   enGB = 'en-GB',
   zhCN = 'zh-CN',
   frFR = 'fr-FR',
+  deDE = 'de-DE',
 }
 
 export enum Relationship {
