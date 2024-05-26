@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import type { ActiveMode, ActiveRuleset, LeaderboardRankingSystem } from '~/def/common'
 import * as icon from '~/common/icon'
+import type { RouteLocationRaw } from '#vue-router'
 
-interface modelValue {
+export interface SwitcherState {
   mode?: ActiveMode
   ruleset?: ActiveRuleset
   rankingSystem?: LeaderboardRankingSystem
 }
+
 const props = defineProps<{
   showSort?: boolean
-  modelValue?: modelValue
+  modelValue?: SwitcherState
+  toHref?(switcher: SwitcherState): RouteLocationRaw
 }>()
 
 const emit = defineEmits<{
-  (event: 'input', res: modelValue): void
-  (event: 'update:modelValue', res: modelValue): void
+  (event: 'input', res: SwitcherState): void
+  (event: 'update:modelValue', res: SwitcherState): void
 }>()
 
 const { hasLeaderboardRankingSystem, hasRuleset, supportedModes, supportedRulesets, supportedLeaderboardRankingSystems } = useAdapterConfig()
@@ -42,7 +45,8 @@ watch(switcher, () => emitData())
           '!opacity-10 pointer-events-none':
             switcher.ruleset && !hasRuleset(mode, switcher.ruleset),
         }"
-        @click="setSwitcher({ mode })"
+        :href="$router.resolve(toHref?.({ ...switcher, mode }) as any).fullPath"
+        @click.prevent="setSwitcher({ mode })"
       >
         <img
           :src="`/icons/mode/${icon.mode[mode].icon}.svg`"
@@ -60,7 +64,8 @@ watch(switcher, () => emitData())
           '!opacity-20 pointer-events-none':
             switcher.mode && !hasRuleset(switcher.mode, ruleset),
         }"
-        @click="setSwitcher({ ruleset })"
+        :href="$router.resolve(toHref?.({ ...switcher, ruleset }) as any).fullPath"
+        @click.prevent="setSwitcher({ ruleset })"
       >
         {{ $t(localeKey.ruleset(ruleset)) }}
       </a>
@@ -87,7 +92,8 @@ watch(switcher, () => emitData())
             '!opacity-80 pointer-events-none':
               switcher.rankingSystem === rankingSystem,
           }"
-          @click="setSwitcher({ rankingSystem })"
+          :href="$router.resolve(toHref?.({ ...switcher, rankingSystem }) as any).fullPath"
+          @click.prevent="setSwitcher({ rankingSystem })"
         >
           {{ $t(localeKey.rankingSystem(rankingSystem)) }}
         </a>

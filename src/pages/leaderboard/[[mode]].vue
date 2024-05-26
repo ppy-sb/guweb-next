@@ -1,6 +1,12 @@
 <script setup lang="ts" async>
-import type { ActiveMode, ActiveRuleset, LeaderboardRankingSystem } from '~/def/common'
+import type {
+  ActiveMode,
+  ActiveRuleset,
+  LeaderboardRankingSystem,
+} from '~/def/common'
+import type { SwitcherState } from '~/components/app/mode-switcher.vue'
 import type { SwitcherPropType } from '~/composables/useSwitcher'
+import type { RouteLocationRaw } from '#vue-router'
 
 const config = useRuntimeConfig()
 
@@ -13,21 +19,21 @@ const { t } = useI18n()
 const { mode: pMode } = route.params
 const { ruleset: pRuleset, ranking: pRankingSystem, page: pPage } = route.query
 
-const availableRankingSystems = Object.keys(config.public.leaderboardRankingSystem)
+const availableRankingSystems = Object.keys(
+  config.public.leaderboardRankingSystem
+)
 const mode = (
-  (isString(pMode) && includes(pMode, supportedModes))
-    ? pMode
-    : supportedModes[0]
+  isString(pMode) && includes(pMode, supportedModes) ? pMode : supportedModes[0]
 ) as ActiveMode
 
 const ruleset = (
-  (isString(pRuleset) && includes(pRuleset, supportedRulesets))
+  isString(pRuleset) && includes(pRuleset, supportedRulesets)
     ? pRuleset
     : supportedRulesets[0]
 ) as ActiveRuleset
 
 const rankingSystem = (
-  (isString(pRankingSystem) && availableRankingSystems.includes(pRankingSystem))
+  isString(pRankingSystem) && availableRankingSystems.includes(pRankingSystem)
     ? pRankingSystem
     : availableRankingSystems[0]
 ) as LeaderboardRankingSystem
@@ -41,9 +47,13 @@ const selected = ref<Required<SwitcherPropType<LeaderboardRankingSystem>>>({
   ruleset,
   rankingSystem,
 })
-const { data: total } = await app.$client.rank.countLeaderboard.useQuery(selected)
+const { data: total } = await app.$client.rank.countLeaderboard.useQuery(
+  selected
+)
 
-const totalPages = computed(() => Math.min(Math.ceil((total.value || 0) / perPage), 5))
+const totalPages = computed(() =>
+  Math.min(Math.ceil((total.value || 0) / perPage), 5)
+)
 watch(totalPages, boundaryPage, { immediate: true })
 
 const queryLeaderboardValue = computed(() => ({
@@ -54,13 +64,20 @@ const queryLeaderboardValue = computed(() => ({
   pageSize: perPage,
 }))
 
-const { pending, data: table } = await app.$client.rank.leaderboard.useQuery(queryLeaderboardValue)
+const { pending, data: table } = await app.$client.rank.leaderboard.useQuery(
+  queryLeaderboardValue
+)
 
 useHead({
   titleTemplate(title) {
     return `${title} - ${app.$i18n.t(localeKey.server.name.__path__)}`
   },
-  title: () => `${t(localeKey.mode(selected.value.mode))} | ${t(localeKey.ruleset(selected.value.ruleset))} | ${t(localeKey.rankingSystem(selected.value.rankingSystem))} - ${t(localeKey.title.leaderboard.__path__)}`,
+  title: () =>
+    `${t(localeKey.mode(selected.value.mode))} | ${t(
+      localeKey.ruleset(selected.value.ruleset)
+    )} | ${t(localeKey.rankingSystem(selected.value.rankingSystem))} - ${t(
+      localeKey.title.leaderboard.__path__
+    )}`,
 })
 
 function boundaryPage() {
@@ -72,17 +89,7 @@ function boundaryPage() {
 
 function rewriteHistory() {
   const l = window.location
-  const r = router.resolve({
-    name: 'leaderboard-mode',
-    params: {
-      mode: selected.value.mode,
-    },
-    query: {
-      ranking: selected.value.rankingSystem,
-      ruleset: selected.value.ruleset,
-      page: page.value,
-    },
-  })
+  const r = router.resolve(createRoute(selected.value))
 
   const rewrite = l.origin + r.fullPath
   history.replaceState({}, '', rewrite)
@@ -93,6 +100,21 @@ function reloadPage(i?: number) {
     page.value = i
   }
   rewriteHistory()
+}
+
+function createRoute(i: SwitcherState) {
+  return {
+    name: 'leaderboard-mode',
+    params: {
+      ...route.params,
+      mode: i.mode,
+    },
+    query: {
+      ranking: i.rankingSystem,
+      ruleset: i.ruleset,
+      page: page.value,
+    },
+  } as RouteLocationRaw
 }
 </script>
 
@@ -117,7 +139,9 @@ de-DE:
 </i18n>
 
 <template>
-  <div class="flex flex-col h-full leaderboard custom-container mx-auto !max-w-4xl w-full">
+  <div
+    class="flex flex-col h-full leaderboard custom-container mx-auto !max-w-4xl w-full"
+  >
     <header-simple-title-with-sub
       id="desc"
       :title="$t('title.leaderboard')"
@@ -125,14 +149,15 @@ de-DE:
         selected.mode
           && selected.ruleset
           && selected.rankingSystem
-          && `${$t(localeKey.mode(selected.mode))} - ${
-            $t(localeKey.ruleset(selected.ruleset))
-          } | ${$t(localeKey.rankingSystem(selected.rankingSystem))}`
+          && `${$t(localeKey.mode(selected.mode))} - ${$t(
+            localeKey.ruleset(selected.ruleset),
+          )} | ${$t(localeKey.rankingSystem(selected.rankingSystem))}`
       "
     >
       <app-mode-switcher
         v-model="selected"
         :show-sort="true"
+        :to-href="createRoute"
         @update:model-value="reloadPage()"
       />
       <template #after-title>
@@ -150,8 +175,14 @@ de-DE:
         content: table.length,
       }"
     >
-      <div v-if="table.length" class="relative w-full mx-auto overflow-x-auto xl:rounded-lg">
-        <table class="table table-zebra whitespace-nowrap" aria-describedby="desc">
+      <div
+        v-if="table.length"
+        class="relative w-full mx-auto overflow-x-auto xl:rounded-lg"
+      >
+        <table
+          class="table table-zebra whitespace-nowrap"
+          aria-describedby="desc"
+        >
           <thead class="text-base">
             <tr>
               <th class="text-center">
@@ -164,15 +195,13 @@ de-DE:
                 Player
               </th>
               <th class="px-4 font-semibold text-end">
-                {{
-                  $t(localeKey.rankingSystem(selected.rankingSystem))
-                }}
+                {{ $t(localeKey.rankingSystem(selected.rankingSystem)) }}
               </th>
               <th class="px-4 font-medium text-end">
-                {{ $t('global.accuracy') }}
+                {{ $t("global.accuracy") }}
               </th>
               <th class="px-4 font-medium text-end">
-                {{ $t('global.play-count') }}
+                {{ $t("global.play-count") }}
               </th>
             </tr>
           </thead>
@@ -192,7 +221,8 @@ de-DE:
           </tbody>
         </table>
         <div
-          class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur-sm" :class="{
+          class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur-sm"
+          :class="{
             'opacity-100 !blur-none': pending,
           }"
         >
@@ -204,14 +234,27 @@ de-DE:
         class="pb-10 my-auto text-gbase-900 dark:text-gbase-100 grow"
       >
         <h1 class="text-xl font-semibold text-center">
-          {{ t('no-score') }}
+          {{ t("no-score") }}
         </h1>
         <h2 class="text-sm font-semibold text-center opacity-60">
-          {{ t('no-score-alt') }}
+          {{ t("no-score-alt") }}
         </h2>
       </div>
       <div v-if="totalPages > 1" class="mx-auto mt-4 join outline outline-2">
-        <input v-for="i in totalPages" :key="`pagination-${i}`" class="join-item btn btn-ghost checked:outline outline-2" type="radio" :checked="page === i" name="options" :aria-label="i.toString()" @click="reloadPage(i)">
+        <a
+          v-for="i in totalPages"
+          :key="`pagination-${i}`"
+          class="join-item btn btn-ghost [&.active]:outline [&.active]:bg-primary outline-2"
+          :class="{
+            active: page === i,
+          }"
+          type="radio"
+          :href="$router.resolve(createRoute(selected) as any).fullPath"
+          :aria-label="i.toString()"
+          @click.prevent="reloadPage(i)"
+        >
+          {{ i }}
+        </a>
       </div>
     </div>
   </div>
@@ -219,6 +262,6 @@ de-DE:
 
 <style lang="postcss">
 .bigger-when-active:active {
-  @apply font-semibold drop-shadow-md border-2 rounded-lg
+  @apply font-semibold drop-shadow-md border-2 rounded-lg;
 }
 </style>
