@@ -66,7 +66,7 @@
     "lodash-es": "^4.17.21",
     "lowlight": "^3.1.0",
     "md5": "^2.3.0",
-    "mysql2": "^3.6.5",
+    "mysql2": "^3.9.8",
     "nodemailer": "^6.9.10",
     "prosemirror-commands": "^1.5.2",
     "prosemirror-dropcursor": "^1.8.1",
