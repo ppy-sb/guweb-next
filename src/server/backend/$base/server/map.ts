@@ -28,20 +28,20 @@ export namespace MapProvider {
   | LocalBeatmapCompact<Id> & { beatmapset: LocalBeatmapset<Id> }
 }
 export abstract class MapProvider<Id, ForeignId> extends IdTransformable {
-  abstract getBeatmapset(query: MapProvider.IdQuery<Id>): PromiseLike<MapProvider.BeatmapsetWithMaps<Id, ForeignId>>
+  abstract getBeatmapset(query: MapProvider.IdQuery<Id>): Promise<MapProvider.BeatmapsetWithMaps<Id, ForeignId>>
   abstract getBeatmap(
     query: string
-  ): PromiseLike<BeatmapWithMeta<
+  ): Promise<BeatmapWithMeta<
     RankingStatus,
     Id,
-    unknown
+    ForeignId
   >>
-  abstract searchBeatmap(opt: { keyword: string; limit: number; filters?: Tag[] }): PromiseLike<
+  abstract searchBeatmap(opt: { keyword: string; limit: number; filters?: Tag[] }): Promise<
    MapProvider.BeatmapWithBeamapset<Id, ForeignId>[]
   >
   abstract searchBeatmapset(opt: {
     keyword: string
     limit: number
     filters?: Tag[]
-  }): PromiseLike<Beatmapset<Id, unknown>[]>
+  }): Promise<Beatmapset<Id, ForeignId>[]>
 }

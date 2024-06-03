@@ -46,13 +46,13 @@ export namespace ScoreProvider {
 }
 
 export abstract class ScoreProvider<TScoreId, TId> extends Mixin(IdTransformable, ScoreIdTransformable) {
-  abstract id(id: TScoreId): PromiseLike<
+  abstract id(id: TScoreId): Promise<
     | (RulesetScore<TScoreId, TId, ActiveMode, ActiveRuleset, PPRankingSystem> & {
       user: UserCompact<TId>
     })
   >
-  abstract findOne(opt: ScoreProvider.SearchQuery<TId>): PromiseLike<ScoreProvider.ScoreWithUser<TScoreId, TId>>
-  abstract findMany(opt: ScoreProvider.SearchQuery<TId>): PromiseLike<ScoreProvider.ScoreWithUser<TScoreId, TId>[]>
+  abstract findOne(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>>
+  abstract findMany(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>[]>
 
   // abstract recents(opt: ClanProvider.RecentScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>
   // abstract tops(opt: ClanProvider.TopScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>

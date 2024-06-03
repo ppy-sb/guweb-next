@@ -1,8 +1,8 @@
-import type { JSONContent } from '@tiptap/core'
 import type { ExtractLocationSettings, ExtractSettingType } from '../@define-setting'
 import type { Composition } from './@common'
 import { IdTransformable } from './@extends'
 import type { MailTokenProvider } from './mail-token'
+import { type ArticleProvider } from '.'
 import type { settings } from '$active/dynamic-settings'
 import type { Mode, Ruleset } from '~/def'
 import type { BeatmapSource, RankingStatus } from '~/def/beatmap'
@@ -43,23 +43,23 @@ export namespace UserProvider {
     mode: Mode
     ruleset: Ruleset
     rankingSystem: RankingSystem
-    rankingStatus: RankingStatus[]
+    rankingStatus?: RankingStatus[]
   }
 
   export type UserCompact<Id> = UserCompact$2<Id>
 }
 
 export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
-  abstract uniqueIdent(input: string): PromiseLike<boolean>
+  abstract uniqueIdent(input: string): Promise<boolean>
 
   abstract getCompact(
     opt: UserProvider.OptType & { scope: Scope }
   ): Promise<UserCompact<Id>>
 
   abstract testPassword(
-    opt: UserProvider.OptType & { scope: Scope },
+    opt: UserProvider.OptType,
     hashedPassword: string,
-  ): Promise<[boolean, UserCompact<Id> | undefined]>
+  ): Promise<[boolean, UserCompact<Id>]>
 
   abstract getCompactById(id: Id): Promise<UserCompact<Id>>
 
@@ -68,7 +68,7 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
   abstract getStatistics(query: {
     id: Id
     flag: CountryCode
-  }): PromiseLike<UserStatistic>
+  }): Promise<UserStatistic>
 
   abstract getFull<
     Excludes extends Partial<
@@ -119,7 +119,7 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
     }
   }
 
-  abstract changeEmail(user: { id: Id }, newEmail: MailTokenProvider.Email): PromiseLike<Pick<UserOptional, 'email'>>
+  abstract changeEmail(user: { id: Id }, newEmail: MailTokenProvider.Email): Promise<Pick<UserOptional, 'email'>>
 
   abstract changeSettings(
     user: { id: Id },
@@ -127,21 +127,21 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
       // email?: string
       name?: string
       flag?: CountryCode
-      preferredMode: {
+      preferredMode?: {
         mode: Mode
         ruleset: Ruleset
       }
     }
-  ): PromiseLike<UserCompact<Id>>
+  ): Promise<UserCompact<Id>>
 
   abstract changeUserpage(
     user: { id: Id },
     input: {
-      profile: JSONContent
+      profile: ArticleProvider.JSONContent
     }
-  ): PromiseLike<{
+  ): Promise<{
     html: string
-    raw: JSONContent
+    raw: ArticleProvider.JSONContent
   }>
 
   abstract changeVisibility(
@@ -151,28 +151,28 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
       name?: string
       userpageContent?: string
     }
-  ): PromiseLike<UserCompact<Id>>
+  ): Promise<UserCompact<Id>>
 
-  abstract changePasswordNoCheck(user: { id: Id }, newPassword: string): PromiseLike<void>
+  abstract changePasswordNoCheck(user: { id: Id }, newPassword: string): Promise<void>
 
   abstract changePassword(
     user: { id: Id },
     oldPasswordMD5: string,
     newPasswordMD5: string
-  ): PromiseLike<UserCompact<Id>>
+  ): Promise<UserCompact<Id>>
 
-  abstract changeAvatar(user: { id: Id }, avatar: Uint8Array): PromiseLike<string>
+  abstract changeAvatar(user: { id: Id }, avatar: Uint8Array): Promise<string>
 
   abstract search(opt: {
     keyword: string
     limit: number
-  }): PromiseLike<Array<UserCompact<Id> & { clan: UserClan<Id> | null }>>
+  }): Promise<Array<UserCompact<Id> & { clan: UserClan<Id> | null }>>
 
   abstract count(opt: {
     keyword?: string
-  }): PromiseLike<number>
+  }): Promise<number>
 
-  abstract status({ id }: { id: Id }): PromiseLike<{
+  abstract status({ id }: { id: Id }): Promise<{
     status: UserStatus.Offline
     lastSeen: Date
   } | {
@@ -186,7 +186,7 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
       md5: string
       version: string
       creator: string
-      beatmapset?: {
+      beatmapset: {
         id: number
         foreignId: number
         meta: {
@@ -200,7 +200,12 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
     }
   } | null>
 
-  abstract register(opt: { name: string; safeName: string; email: string; passwordMd5: string }): PromiseLike<UserCompact<Id>>
+  abstract register(opt: {
+    name: string
+    safeName?: string
+    email: string
+    passwordMd5: string
+  }): Promise<UserCompact<Id>>
 
   abstract getDynamicSettings(user: { id: Id }): Promise<ExtractSettingType<ExtractLocationSettings<DynamicSettingStore.Server, typeof settings>>>
 
@@ -210,13 +215,13 @@ export abstract class UserProvider<Id, ScoreId> extends IdTransformable {
     Mode extends ActiveMode,
     Ruleset extends ActiveRuleset,
     RankingSystem extends LeaderboardRankingSystem,
-  >(query: UserProvider.BaseQuery<Id, Mode, Ruleset, RankingSystem>): PromiseLike<RankingSystemScore<ScoreId, Id, Mode, RankingSystem>[]>
+  >(query: UserProvider.BaseQuery<Id, Mode, Ruleset, RankingSystem>): Promise<RankingSystemScore<ScoreId, Id, Mode, RankingSystem>[]>
 
   abstract getTops<
     Mode extends ActiveMode,
     Ruleset extends ActiveRuleset,
     RankingSystem extends LeaderboardRankingSystem,
-  >(query: UserProvider.BaseQuery<Id, Mode, Ruleset, RankingSystem>): PromiseLike<{
+  >(query: UserProvider.BaseQuery<Id, Mode, Ruleset, RankingSystem>): Promise<{
     count: number
     scores: RankingSystemScore<ScoreId, Id, Mode, RankingSystem>[]
   }>

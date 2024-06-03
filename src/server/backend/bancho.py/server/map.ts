@@ -141,7 +141,7 @@ export class MapProvider implements Base<Id, Id> {
     keyword: string
     limit: number
     filters?: Tag[]
-  }): Promise<Beatmapset<number, unknown>[]> {
+  }): Promise<Beatmapset<Id, Id>[]> {
     const idKw = stringToId(keyword)
     const sql = this.drizzle.select({
       id: schema.sources.id,

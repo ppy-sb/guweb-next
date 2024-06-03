@@ -2,7 +2,7 @@ import { ArticleProvider as Base } from '$base/server/article'
 import type { UserCompact } from '~/def/user'
 
 export class ArticleProvider extends Base {
-  async get(opt: { slug: string; fallback?: boolean; user?: UserCompact<unknown> }) {
+  async get(opt: { slug: string; fallback: boolean; user?: UserCompact<unknown> }) {
     const content = await this.getLocal(opt)
     if (!content) {
       return undefined

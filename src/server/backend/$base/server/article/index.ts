@@ -30,15 +30,15 @@ export abstract class ArticleProvider {
   abstract get(opt: {
     slug: string
     fallback: boolean
-    user: UserCompact<any>
-  }): PromiseLike<(ArticleProvider.Content & ArticleProvider.Meta & ArticleProvider.Version & ArticleProvider.AccessControl) | undefined>
+    user?: UserCompact<any>
+  }): Promise<(ArticleProvider.Content & ArticleProvider.Meta & ArticleProvider.Version & ArticleProvider.AccessControl) | undefined>
 
   abstract save(opt: {
     slug: string
     json: ArticleProvider.JSONContent
     privilege: ArticleProvider.Meta['privilege']
     user: UserCompact<any>
-  }): PromiseLike<void>
+  }): Promise<void>
 
   async delete(opt: { slug: string; user: UserCompact<any> }) {
     return ArticleProvider.deleteLocal(opt)

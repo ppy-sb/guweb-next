@@ -10,12 +10,13 @@ import type { PaginatedResult } from '~/def/pagination'
 import type { RankingSystemScore } from '~/def/score'
 
 export abstract class ClanProvider<Id> extends IdTransformable {
-  abstract search(opt: ClanProvider.SearchParam): PromiseLike<ClanProvider.SearchResult<Id>>
-  abstract detail(opt: ClanProvider.DetailParam<Id>): PromiseLike<ClanProvider.DetailResult<Id>>
-  abstract users(opt: ClanProvider.UsersParam<Id>): PromiseLike<ClanProvider.UsersResult<Id>>
-  abstract getClanRelation(opt: ClanProvider.ChangeRelationRequestParam<Id>): PromiseLike<ClanRelation>
-  abstract joinRequest(opt: ClanProvider.ChangeRelationRequestParam<Id>): PromiseLike<ClanRelation>
-  abstract leaveRequest(opt: ClanProvider.ChangeRelationRequestParam<Id>): PromiseLike<ClanRelation>
+  abstract search(opt: ClanProvider.SearchParam): Promise<ClanProvider.SearchResult<Id>>
+  abstract detail(opt: ClanProvider.DetailParam<Id>): Promise<ClanProvider.DetailResult<Id>>
+  abstract users(opt: ClanProvider.UsersParam<Id>): Promise<ClanProvider.UsersResult<Id>>
+  abstract getClanRelation(opt: ClanProvider.ChangeRelationRequestParam<Id>): Promise<ClanRelation>
+  abstract joinRequest(opt: ClanProvider.ChangeRelationRequestParam<Id>): Promise<ClanRelation>
+  abstract leaveRequest(opt: ClanProvider.ChangeRelationRequestParam<Id>): Promise<ClanRelation>
+  abstract bests(opt: ClanProvider.BestsParam<Id>): Promise<ClanProvider.BestsResult<Id>>
 }
 
 export namespace ClanProvider {

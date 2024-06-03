@@ -8,15 +8,15 @@ export const sessionConfig = {
 
 export abstract class SessionStore<TSession extends Session<any>, TSessionId extends SessionIdType<TSession> = SessionIdType<TSession>> implements Monitored {
   abstract [Monitored.status]: Monitored[typeof Monitored.status]
-  abstract get(key: TSessionId): PromiseLike<Readonly<TSession> | undefined>
-  abstract set(key: TSessionId, value: TSession): PromiseLike<[TSessionId, Readonly<TSession>]>
-  abstract destroy(key: TSessionId): PromiseLike<boolean>
-  abstract forEach(cb: (session: TSession, id: TSessionId) => void | PromiseLike<void>): PromiseLike<void>
-  abstract findAll(query: Partial<Pick<TSession, 'OS' | 'userId'>>): PromiseLike<Record<TSessionId, Readonly<TSession>>>
+  abstract get(key: TSessionId): Promise<Readonly<TSession> | undefined>
+  abstract set(key: TSessionId, value: TSession): Promise<[TSessionId, Readonly<TSession>]>
+  abstract destroy(key: TSessionId): Promise<boolean>
+  abstract forEach(cb: (session: TSession, id: TSessionId) => void | Promise<void>): Promise<void>
+  abstract findAll(query: Partial<Pick<TSession, 'OS' | 'userId'>>): Promise<Record<TSessionId, Readonly<TSession>>>
 }
 
 export abstract class HouseKeeperSession<TSession extends Session<any>, TSessionId extends SessionIdType<TSession> = SessionIdType<TSession>> extends SessionStore<TSession> implements SessionStore<TSession> {
-  #houseKeeping: Partial<Record<'minutely' | 'hourly' | 'daily', (store: SessionStore<TSession>, _config: typeof sessionConfig) => PromiseLike<void>>> = {
+  #houseKeeping: Partial<Record<'minutely' | 'hourly' | 'daily', (store: SessionStore<TSession>, _config: typeof sessionConfig) => Promise<void>>> = {
     async minutely(this: MemorySessionStore<TSession>, sessionStore) {
       sessionStore.forEach((session, sessionId) => this.#removeIfExpired(session, sessionId))
     },
@@ -64,7 +64,7 @@ export class MemorySessionStore<TSession extends Session<any>, TSessionId extend
     return this.store.delete(key)
   }
 
-  async forEach(cb: (session: TSession, id: TSessionId) => void | PromiseLike<void>): Promise<void> {
+  async forEach(cb: (session: TSession, id: TSessionId) => void | Promise<void>): Promise<void> {
     return this.store.forEach(cb)
   }
 

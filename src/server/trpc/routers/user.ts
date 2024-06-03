@@ -16,7 +16,7 @@ import { router as _router, publicProcedure as p } from '../trpc'
 import { Logger } from '$base/logger'
 import { type MailTokenProvider as MBase, type MailTokenProvider } from '$base/server'
 import { type Mode } from '~/def'
-import { RankingStatus } from '~/def/beatmap'
+import { type RankingStatus } from '~/def/beatmap'
 import { type LeaderboardRankingSystem } from '~/def/common'
 import { Mail } from '~/def/mail'
 import { GucchoError } from '~/def/messages'
@@ -71,10 +71,7 @@ export const router = _router({
         ruleset: zodRuleset,
         rankingSystem: zodLeaderboardRankingSystem,
         page: number().gte(0).lt(10),
-        includes: array(zodRankingStatus).default([
-          RankingStatus.Ranked,
-          RankingStatus.Approved,
-        ]),
+        includes: array(zodRankingStatus).optional(),
       }),
     )
     .query(async ({ input, ctx }) => {
@@ -129,10 +126,7 @@ export const router = _router({
         ruleset: zodRuleset,
         rankingSystem: zodLeaderboardRankingSystem,
         page: number().gte(0).lt(10),
-        includes: array(zodRankingStatus).default([
-          RankingStatus.Ranked,
-          RankingStatus.Approved,
-        ]),
+        includes: array(zodRankingStatus).optional(),
       }),
     )
     .query(async ({ input, ctx }) => {

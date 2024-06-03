@@ -33,25 +33,25 @@ export abstract class RankProvider<Id> extends IdTransformable {
     query: RankProvider.BaseQuery & RankProvider.Pagination & {
       rankingSystem: LeaderboardRankingSystem
     }
-  ): PromiseLike<ComponentLeaderboard<Id>[]>
+  ): Promise<ComponentLeaderboard<Id>[]>
 
   abstract countLeaderboard(
     query: RankProvider.BaseQuery & {
       rankingSystem: LeaderboardRankingSystem
     }
-  ): PromiseLike<number>
+  ): Promise<number>
 
   abstract beatmap(
     query: RankProvider.BaseQueryOptionalMode & RankProvider.Pagination & {
       rankingSystem: RankingSystem
       md5: string
     }
-  ): PromiseLike<BeatmapLeaderboard<Id>[]>
+  ): Promise<BeatmapLeaderboard<Id>[]>
 
   abstract countBeatmap(
     query: RankProvider.BaseQueryOptionalMode & {
       rankingSystem: RankingSystem
       md5: string
     }
-  ): PromiseLike<number>
+  ): Promise<number>
 }

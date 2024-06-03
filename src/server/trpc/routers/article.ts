@@ -9,7 +9,7 @@ import { ArticleProvider, articles } from '~/server/singleton/service'
 export const router = _router({
   get: userProcedure
     .input(string().trim())
-    .query(({ input, ctx }) => articles.get({ slug: input, user: ctx.user })),
+    .query(({ input, ctx }) => articles.get({ slug: input, fallback: true, user: ctx.user })),
 
   getRendered: optionalUserProcedure
     .input(union([string().trim(), array(string().trim())]))

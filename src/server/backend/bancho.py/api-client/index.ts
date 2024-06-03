@@ -31,7 +31,7 @@ type LiveUserStatus =
     status: 200
     statusText: string
     ok: true
-    json: () => PromiseLike<
+    json: () => Promise<
       | {
         status: 'success'
         player_status: {
@@ -71,13 +71,13 @@ type LiveUserStatus =
     ok: false
     status: 404
     statusText: string
-    json: () => PromiseLike<{ status: 'Player not found.' }>
+    json: () => Promise<{ status: 'Player not found.' }>
   }
   | {
     ok: false
     status: 400
     statusText: string
-    json: () => PromiseLike<{ status: 'Must provide either id OR name!' }>
+    json: () => Promise<{ status: 'Must provide either id OR name!' }>
   }
 
 function createFetch(endpoint: string) {
