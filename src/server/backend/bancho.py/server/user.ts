@@ -50,6 +50,7 @@ import { Mode, Rank, Ruleset } from '~/def'
 import { UserProvider as Base, type MailTokenProvider } from '$base/server'
 import type { ExtractLocationSettings, ExtractSettingType } from '$base/@define-setting'
 import { type RankingSystemScore } from '~/def/score'
+import { RankingStatus } from '~/def/beatmap'
 
 type ServerSetting = ExtractSettingType<ExtractLocationSettings<DynamicSettingStore.Server, typeof settings>>
 
@@ -106,6 +107,9 @@ class DBUserProvider extends Base<Id, ScoreId> implements Base<Id, ScoreId> {
       reason: 'Username should between 2 - 14 chars long, allows a-z, 0-9, [] and -, _',
     },
   ]
+
+  protected readonly bestsRankingStatuses = [RankingStatus.Ranked, RankingStatus.Approved]
+  protected readonly topsRankingStatuses = [RankingStatus.Ranked, RankingStatus.Approved, RankingStatus.Qualified]
 
   constructor() {
     super()
@@ -232,7 +236,7 @@ class DBUserProvider extends Base<Id, ScoreId> implements Base<Id, ScoreId> {
     rankingSystem,
     page,
     perPage,
-    rankingStatus,
+    rankingStatus = this.bestsRankingStatuses,
   }: Base.BaseQuery<Id, M, ActiveRuleset, RS>): Promise<RankingSystemScore<ScoreId, Id, Mode, RS>[]> {
     const start = page * perPage
     const _mode = toBanchoPyMode(mode, ruleset)
@@ -263,7 +267,7 @@ class DBUserProvider extends Base<Id, ScoreId> implements Base<Id, ScoreId> {
         ? desc(score.pp)
         : (rankingSystem === Rank.RankedScore || rankingSystem === Rank.TotalScore)
             ? desc(score.score)
-            : raiseError('unknown ranking system˝')
+            : raiseError('unknown ranking system')
       )
       .offset(start)
       .limit(perPage)
@@ -280,11 +284,19 @@ class DBUserProvider extends Base<Id, ScoreId> implements Base<Id, ScoreId> {
   }
 
   async getTops<M extends ActiveMode, RS extends LeaderboardRankingSystem>(opt: Base.BaseQuery<Id, M, ActiveRuleset, RS>) {
-    const { id, mode, ruleset, rankingSystem, page, perPage, rankingStatus } = opt
+    const {
+      id,
+      mode,
+      ruleset,
+      rankingSystem,
+      page,
+      perPage,
+      rankingStatus = this.topsRankingStatuses,
+    } = opt
 
     const start = page * perPage
 
-    const banchoPyRankingStatus = rankingStatus.map(i => fromRankingStatus(i))
+    const banchoPyRankingStatus = rankingStatus?.map(i => fromRankingStatus(i))
 
     // derived tables
     const s = aliasedTable(schema.scores, 's')
@@ -459,7 +471,7 @@ class DBUserProvider extends Base<Id, ScoreId> implements Base<Id, ScoreId> {
     returnValue.preferredMode = {
       mode, ruleset,
     }
-    const parallels: PromiseLike<any>[] = []
+    const parallels: Promise<any>[] = []
 
     returnValue.status = UserStatus.Offline
 

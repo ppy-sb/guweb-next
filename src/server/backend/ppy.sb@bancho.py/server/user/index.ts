@@ -13,6 +13,7 @@ import { Scope, type UserCompact, UserRole, UserStatus } from '~/def/user'
 import { ArticleProvider, UserProvider as BanchoPyUser } from '~/server/backend/bancho.py/server'
 import { fromBanchoPyMode, toFullUser, toUserClan } from '~/server/backend/bancho.py/transforms'
 import type { UserProvider as Base } from '$base/server'
+import { RankingStatus } from '~/def/beatmap'
 
 const logger = Logger.child({ label: 'user' })
 
@@ -32,6 +33,16 @@ export class UserProvider extends BanchoPyUser implements Base<Id, ScoreId> {
       match: controlChars,
       reason: 'disallow Unicode Control characters',
     },
+  ]
+
+  protected override readonly topsRankingStatuses = [
+    RankingStatus.Approved,
+    RankingStatus.Loved,
+    RankingStatus.Qualified,
+    RankingStatus.Ranked,
+    RankingStatus.WIP,
+    RankingStatus.Graveyard,
+    RankingStatus.Pending,
   ]
 
   async changeSettings(
