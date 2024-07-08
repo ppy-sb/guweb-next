@@ -16,6 +16,7 @@ export enum OP {
   OR,
   AND,
   NOT,
+  ModeEq,
   Extends,
   BeatmapMd5Eq,
   NoPause,
@@ -31,6 +32,7 @@ type ConcreteCond =
   | readonly [OP.AccGte, number]
   | readonly [OP.ScoreGte, number]
   | readonly [OP.WithMod, StableMod]
+  | readonly [OP.ModeEq, Mode]
   | readonly [OP.NoPause]
 
 type DeepCond =
@@ -113,4 +115,5 @@ export type ValidatingScore = ScoreCompact<any, Mode.Mania> & {
   beatmap: BeatmapCompact<any, any>
   nonstop: boolean
   player: UserCompact<any>
+  mode: Mode
 }
