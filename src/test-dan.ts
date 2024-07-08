@@ -3,13 +3,23 @@ import { Grade, StableMod } from './def/score'
 import { BeatmapSource, type ReferencedBeatmapCompact } from './def/beatmap'
 import type { UserCompact } from './def/user'
 import { Mode } from './def'
-import { Achievement, type AchievementResult, type ComputedCond, type Cond, type DetailResult, OP, type Usecase, type ValidatingScore } from './def/dan'
+import {
+  Achievement,
+  type AchievementResult,
+  type ComputedCond,
+  type Cond,
+  type DetailResult,
+  OP,
+  type Usecase,
+  type ValidatingScore,
+} from './def/dan'
 
 const danBaseValidator = [
   OP.Commented,
 
   [
     OP.AND, [
+      [OP.ModeEq, Mode.Mania],
       [OP.AccGte, 96],
       [OP.NOT,
         [
@@ -37,8 +47,8 @@ const rf9 = {
       [
         OP.AND,
         [
-          [OP.BeatmapMd5Eq, 'd25a4b3fde5bc764d259b1bac6a7671c'],
           danBaseValidator,
+          [OP.BeatmapMd5Eq, 'd25a4b3fde5bc764d259b1bac6a7671c'],
         ],
       ],
     ],
@@ -59,8 +69,8 @@ const rf10 = {
       [
         OP.AND,
         [
-          [OP.BeatmapMd5Eq, '1e0310955d28145ca287112360d162e8'],
           danBaseValidator,
+          [OP.BeatmapMd5Eq, '1e0310955d28145ca287112360d162e8'],
         ],
       ],
     ],
@@ -126,6 +136,7 @@ const _9danMap = {
 } satisfies ReferencedBeatmapCompact<any, any>
 
 const scoreCompact = {
+  mode: Mode.Mania,
   id: undefined,
   playedAt: new Date(),
   mods: [],
@@ -234,8 +245,10 @@ function fmt_cond(cond: Cond, value: Cond[1], remark?: string) {
       return `Plug(${remark})`
 
     case OP.WithMod:
-      type a = typeof cond[1]
-      return `${OP[op]} ${StableMod[_maybeValue]}, ${StableMod[value as a]}`
+      return `${OP[op]} ${StableMod[_maybeValue]}`
+
+    case OP.ModeEq:
+      return `${OP[op]} ${_maybeValue}, ${value}`
 
     // op without attribute
     case OP.NoPause:
@@ -308,6 +321,13 @@ function run_cond<C extends Cond, AB extends readonly [Achievement, Cond]>(
       return {
         cond,
         result: score.mods.includes(_maybeValue),
+        value: _maybeValue,
+      } as DetailResult<C, AB>
+    }
+    case OP.ModeEq: {
+      return {
+        cond,
+        result: score.mode === _maybeValue,
         value: _maybeValue,
       } as DetailResult<C, AB>
     }
