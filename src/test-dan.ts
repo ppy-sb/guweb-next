@@ -59,7 +59,13 @@ const rf10 = {
         OP.AND,
         [
           danBaseValidator,
-          [OP.BeatmapMd5Eq, '1e0310955d28145ca287112360d162e8'],
+          [
+            OP.OR, [
+              [OP.BeatmapMd5Eq, '1e0310955d28145ca287112360d162e8'],
+              [OP.BeatmapMd5Eq, '不同版本的同一套图'],
+              [OP.BanchoBeatmapIdEq, 123456788],
+            ],
+          ],
         ],
       ],
     ],
