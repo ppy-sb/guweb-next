@@ -18,6 +18,7 @@ export enum OP {
   NOT,
   ModeEq,
   Extends,
+  BanchoBeatmapIdEq,
   BeatmapMd5Eq,
   NoPause,
   AccGte,
@@ -28,6 +29,7 @@ export enum OP {
 }
 
 type ConcreteCond =
+  | readonly [OP.BanchoBeatmapIdEq, number]
   | readonly [OP.BeatmapMd5Eq, string]
   | readonly [OP.AccGte, number]
   | readonly [OP.ScoreGte, number]
