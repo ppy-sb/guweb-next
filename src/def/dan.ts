@@ -37,8 +37,11 @@ type ConcreteCond =
   | readonly [OP.ModeEq, Mode]
   | readonly [OP.NoPause]
 
-type DeepCond =
+type WrappingCond =
   | readonly [OP.NOT, Cond]
+  | readonly [OP.Commented, Cond, string]
+
+type DeepCond =
   | readonly [OP.AND, readonly Cond[]]
   | readonly [OP.OR, readonly Cond[]]
 
@@ -47,10 +50,11 @@ export type ComputedCond = DeepCond | ExtendingCond
 export type Cond =
   | ConcreteCond
   | ComputedCond
-  | readonly [OP.Commented, Cond, string]
+  | WrappingCond
 
 type BaseCondOP = ConcreteCond[0]
 type DeepCondOP = DeepCond[0]
+type WrappingCondOP = WrappingCond[0]
 type ExtendingCondOP = ExtendingCond[0]
 
 export interface Usecase<AB extends readonly [Achievement, Cond] = readonly [Achievement, Cond]> {
