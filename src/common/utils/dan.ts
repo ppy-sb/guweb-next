@@ -30,14 +30,14 @@ export function pretty_result(
   return msg.concat(...res.map(res => fmtDetail(res, 1).flat()))
 }
 
-export function sp(n: number) {
+function sp(n: number) {
   return '  '.repeat(n)
 }
-export function b(_b: boolean) {
+function b(_b: boolean) {
   return _b ? '✓' : '✗'
 }
 
-export function fmtDetail(
+function fmtDetail(
   detail: AchievementResult | DetailResult<ComputedCond>,
   indent: number = 0
 ) {
@@ -56,6 +56,10 @@ export function fmtDetail(
       )}`
     )
     indent += 1
+
+    if (detail.cond[0] === OP.Extends) {
+      return msg
+    }
   }
 
   if ('detail' in detail) {
@@ -70,7 +74,7 @@ export function fmtDetail(
   return msg
 }
 
-function fmt_cond(cond: Cond, value: Cond[1], remark?: string) {
+export function fmt_cond(cond: Cond, value: Cond[1], remark?: string) {
   const [op, _maybeValue] = cond
   switch (op) {
     case OP.BanchoBeatmapIdEq:
@@ -94,7 +98,7 @@ function fmt_cond(cond: Cond, value: Cond[1], remark?: string) {
 
     // referenced op
     case OP.Extends:
-      return `${OP[op]} ${Achievement[_maybeValue]}`
+      return `${OP[op]} Achievement(${Achievement[_maybeValue]})`
 
     // deep op
     case OP.AND:
@@ -112,8 +116,15 @@ export function run_usecase<AB extends readonly [Achievement, Cond]>(
   score: ValidatingScore
 ): AchievementResult<AB>[] {
   const check_result: AchievementResult<AB>[] = []
+  const caches: DetailResult<AB[1], AB>[] = []
   for (const [achievement, check_cond] of usecase.achievements) {
-    const r = run_cond<AB[1], AB>(check_cond, usecase.achievements, score)
+    const r = run_cond<AB[1], AB>(
+      check_cond,
+      usecase.achievements,
+      score,
+      caches
+    )
+    caches.push(r)
     check_result.push({
       achievement,
       result: r.result,
@@ -126,7 +137,8 @@ export function run_usecase<AB extends readonly [Achievement, Cond]>(
 function run_cond<C extends Cond, AB extends readonly [Achievement, Cond]>(
   cond: C,
   achievements: readonly AB[],
-  score: ValidatingScore
+  score: ValidatingScore,
+  results: DetailResult<AB[1], AB>[] = []
 ): DetailResult<C, AB> {
   const [op, _maybeValue] = cond
   switch (op) {
@@ -187,7 +199,7 @@ function run_cond<C extends Cond, AB extends readonly [Achievement, Cond]>(
       } as DetailResult<C, AB>
     }
     case OP.Commented: {
-      const result = run_cond(_maybeValue, achievements, score)
+      const result = run_cond(_maybeValue, achievements, score, results)
       return {
         cond,
         result: result.result,
@@ -196,27 +208,31 @@ function run_cond<C extends Cond, AB extends readonly [Achievement, Cond]>(
       } as unknown as DetailResult<C, AB>
     }
     case OP.NOT: {
-      const result = run_cond(_maybeValue, achievements, score)
+      const result = run_cond(_maybeValue, achievements, score, results)
       return {
         cond,
         result: !result.result,
         detail: result,
-      } as DetailResult<C, AB>
+      } as unknown as DetailResult<C, AB>
     }
     case OP.AND: {
-      const results = _maybeValue.map(c => run_cond(c, achievements, score))
+      const _results = _maybeValue.map(c =>
+        run_cond(c, achievements, score, results)
+      )
       return {
         cond,
-        result: results.every(r => r.result),
-        detail: results,
+        result: _results.every(r => r.result),
+        detail: _results,
       } as unknown as DetailResult<C, AB>
     }
     case OP.OR: {
-      const results = _maybeValue.map(c => run_cond(c, achievements, score))
+      const _results = _maybeValue.map(c =>
+        run_cond(c, achievements, score, results)
+      )
       return {
         cond,
-        result: results.some(r => r.result),
-        detail: results,
+        result: _results.some(r => r.result),
+        detail: _results,
       } as unknown as DetailResult<C, AB>
     }
     case OP.Extends: {
@@ -227,7 +243,15 @@ function run_cond<C extends Cond, AB extends readonly [Achievement, Cond]>(
         ?? raiseError(
           `extending achievement (${Achievement[_maybeValue]}) not found`
         )
-      const result = run_cond(_cond, achievements, score)
+      const cached = results.find(i => i.cond === _cond)
+      if (cached) {
+        return {
+          cond: [OP.Extends, _maybeValue],
+          result: cached.result,
+          detail: cached,
+        } as unknown as DetailResult<C, AB>
+      }
+      const result = run_cond(_cond, achievements, score, results)
       return {
         cond: [OP.Extends, _maybeValue],
         result: result.result,
