@@ -28,36 +28,57 @@ export enum OP {
   // MissLte,
 }
 
-type ConcreteCond =
-  | readonly [OP.BanchoBeatmapIdEq, number]
-  | readonly [OP.BeatmapMd5Eq, string]
-  | readonly [OP.AccGte, number]
-  | readonly [OP.ScoreGte, number]
-  | readonly [OP.WithMod, StableMod]
-  | readonly [OP.ModeEq, Mode]
-  | readonly [OP.NoPause]
+interface BaseCond<O> {
+  op: O
+}
 
-type WrappingCond =
-  | readonly [OP.NOT, Cond]
-  | readonly [OP.Commented, Cond, string]
+interface ConcreteCondBase<O, V> extends BaseCond<O> {
+  val: V
+}
 
-type DeepCond =
-  | readonly [OP.AND, readonly Cond[]]
-  | readonly [OP.OR, readonly Cond[]]
+interface WrappedCond<O, C> extends BaseCond<O> {
+  cond: C
+}
 
-type ExtendingCond = readonly [OP.Extends, Achievement]
-export type ComputedCond = DeepCond | ExtendingCond
+interface Remarked<O, V> extends WrappedCond<O, V> {
+  remark: string
+}
+
+type UConcreteCond =
+  | ConcreteCondBase<OP.BanchoBeatmapIdEq, number>
+  | ConcreteCondBase<OP.BeatmapMd5Eq, string>
+  | ConcreteCondBase<OP.AccGte, number>
+  | ConcreteCondBase<OP.ScoreGte, number>
+  | ConcreteCondBase<OP.WithMod, StableMod>
+  | ConcreteCondBase<OP.ModeEq, Mode>
+  | BaseCond<OP.NoPause>
+
+type UWrappedCond =
+  | WrappedCond<OP.NOT, Cond>
+  | Remarked<OP.Commented, Cond>
+
+type UDeepCond =
+  | WrappedCond<OP.AND, readonly Cond[]>
+  | WrappedCond<OP.OR, readonly Cond[]>
+
+type ExtendingCond = ConcreteCondBase<OP.Extends, Achievement>
+export type UComputedCond = UDeepCond | ExtendingCond
 export type Cond =
-  | ConcreteCond
-  | ComputedCond
-  | WrappingCond
+  | UConcreteCond
+  | UComputedCond
+  | UWrappedCond
 
-type BaseCondOP = ConcreteCond[0]
-type DeepCondOP = DeepCond[0]
-type WrappingCondOP = WrappingCond[0]
-type ExtendingCondOP = ExtendingCond[0]
+type BaseCondOP = UConcreteCond['op']
+type DeepCondOP = UDeepCond['op']
+type WrappingCondOP = UWrappedCond['op']
+type ExtendingCondOP = ExtendingCond['op']
 
-export interface Usecase<AB extends readonly [Achievement, Cond] = readonly [Achievement, Cond]> {
+export interface AchievementBinding<A, C> {
+  achievement: A
+  cond: C
+}
+
+export interface Usecase<AB extends AchievementBinding<Achievement, Cond> = AchievementBinding<Achievement, Cond>> {
   id: number
   name: string
   description: string
@@ -67,49 +88,38 @@ export interface Usecase<AB extends readonly [Achievement, Cond] = readonly [Ach
 
 export type DetailResult<
   C extends Cond = Cond,
-  AB extends readonly [Achievement, Cond] = readonly [Achievement, Cond],
+  AB extends AchievementBinding<Achievement, Cond> = AchievementBinding<Achievement, Cond>,
 > =
-  C extends [OP.Commented, infer C extends Cond, any] ?
-    DetailResult<C> & { remark: string }
-    : C extends ConcreteCond
+C extends ConcreteCondBase<infer R extends ExtendingCondOP, infer T extends Achievement>
+  ? {
+      cond: C
+      result: boolean
+      detail: AchievementResult<AB>
+    }
+  : C extends UConcreteCond
+    ? {
+        cond: C
+        result: boolean
+        value: C extends ConcreteCondBase<infer _O, infer _V> ? _V : never
+      }
+    : C extends WrappedCond<infer R extends WrappingCondOP, infer T extends Cond>
       ? {
           cond: C
           result: boolean
-          value: C extends [infer _OP, infer _V] ? _V : never
+          detail: DetailResult<T, AB>
         }
-      : C extends readonly [
-        infer R extends ExtendingCondOP,
-        infer T extends Achievement,
-      ]
+      : C extends WrappedCond<infer R extends DeepCondOP, infer T extends readonly Cond[]>
         ? {
-            cond: readonly [R, T]
+            cond: WrappedCond<R, T>
             result: boolean
-            detail: AchievementResult<AB>
-          }
-        : C extends readonly [
-          infer R extends DeepCondOP,
-          infer T extends Cond,
-        ]
-          ? {
-              cond: readonly [R, T]
-              result: boolean
-              detail: DetailResult<T, AB>
+            detail: {
+              [k in keyof T]: DetailResult<T[k], AB>;
             }
-          : C extends readonly [
-            infer R extends DeepCondOP,
-            infer T extends readonly Cond[],
-          ]
-            ? {
-                cond: readonly [R, T]
-                result: boolean
-                detail: {
-                  [k in keyof T]: DetailResult<T[k], AB>;
-                }
-              }
-            : never
+          }
+        : never
 
-export type AchievementResult<AB extends readonly [Achievement, Cond] = [Achievement, Cond]> =
-  AB extends [infer A extends Achievement, infer C extends Cond]
+export type AchievementResult<AB extends AchievementBinding<Achievement, Cond> = AchievementBinding<Achievement, Cond>> =
+  AB extends AchievementBinding<infer A extends Achievement, infer C extends Cond>
     ? {
         achievement: A
         result: boolean
