@@ -1,5 +1,5 @@
-import { and, eq } from 'drizzle-orm'
-import { rf9 } from '~/server/test-dan-def'
+import { and, eq, sql } from 'drizzle-orm'
+import { testDB } from '~/server/test-dan-def'
 import { useDrizzle } from '~/server/backend/bancho.py/server/source/drizzle'
 import * as schema from '~/server/backend/bancho.py/drizzle/schema'
 import { danSQLChunks } from '~/server/common/sql-dan'
@@ -11,7 +11,22 @@ const tbl = {
   beatmaps: schema.beatmaps,
   sources: schema.sources,
 }
-const sql = db.select()
+const _sql = db.select({
+  player: {
+    id: tbl.users.id,
+    name: tbl.users.name,
+  },
+  score: {
+    id: sql`${tbl.scores.id}`.mapWith(String),
+    accuracy: tbl.scores.accuracy,
+  },
+  beatmap: {
+    id: tbl.beatmaps.id,
+    md5: tbl.beatmaps.md5,
+    title: tbl.beatmaps.title,
+    artist: tbl.beatmaps.artist,
+  },
+})
   .from(tbl.scores)
   .innerJoin(tbl.beatmaps, eq(tbl.scores.mapMd5, tbl.beatmaps.md5))
   .innerJoin(tbl.sources, and(
@@ -22,5 +37,8 @@ const sql = db.select()
   .limit(10)
   .$dynamic()
 export default defineEventHandler(async () => {
-  return await sql.where(danSQLChunks(rf9.achievements[0].cond, rf9.achievements, tbl))
+  return {
+    cond: testDB.achievements[0].cond,
+    result: await _sql.where(danSQLChunks(testDB.achievements[0].cond, testDB.achievements, tbl)),
+  }
 })
