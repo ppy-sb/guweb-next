@@ -86,3 +86,25 @@ export const rf10 = {
     commonNonStop,
   ],
 } as const satisfies Usecase
+
+export const testDB = {
+  id: -1,
+  name: 'test',
+  description: 'test',
+  achievements: [
+    {
+      achievement: Achievement.Pass,
+      cond: {
+        op: OP.AND,
+        cond: [
+          danBaseValidator,
+          {
+            op: OP.BeatmapMd5Eq,
+            val: '9194fda7f829217a9943a5bdf3bf9c59',
+          },
+        ],
+      },
+    },
+    commonNonStop,
+  ],
+} as const satisfies Usecase
