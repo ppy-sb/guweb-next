@@ -3,13 +3,19 @@ import {
   Achievement,
   type AchievementBinding,
   type AchievementResult,
+  type BaseCond,
+
+  type ConcreteCondBase,
   type Cond,
   type DetailResult,
   OP,
+  type Remarked,
   type Usecase,
   type ValidatingScore,
+  type WrappedCond,
 } from '~/def/dan'
 import { StableMod } from '~/def/score'
+import type { Mode } from '~/def'
 
 export function pretty_result(
   res: AchievementResult[],
@@ -84,13 +90,13 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
       return `${OP[op]} ${val}, ${value}`
     }
 
-    case OP.Commented:
+    case OP.Remark:
     {
       const { remark } = cond
       return `Plug(${remark})`
     }
 
-    case OP.WithMod:
+    case OP.WithStableMod:
     {
       const { val } = cond
       return `${OP[op]} ${StableMod[val]}`
@@ -196,7 +202,7 @@ export function run_cond<C extends Cond, AB extends AchievementBinding<Achieveme
         value: score.nonstop,
       } as DetailResult<C, AB>
     }
-    case OP.WithMod: {
+    case OP.WithStableMod: {
       const { val } = cond
       return {
         cond,
@@ -212,7 +218,7 @@ export function run_cond<C extends Cond, AB extends AchievementBinding<Achieveme
         value: val,
       } as DetailResult<C, AB>
     }
-    case OP.Commented: {
+    case OP.Remark: {
       const { remark, cond: _cond } = cond
       const result = run_cond(_cond, achievements, score, results)
       return {
@@ -280,6 +286,56 @@ export function run_cond<C extends Cond, AB extends AchievementBinding<Achieveme
   }
 }
 
-function opNode<O extends OP>(op: O, v: Omit<Cond & { op: O }, 'op'>): Cond & { op: O } {
-  return { op, ...v } as any
+export function $usecase<AB extends AchievementBinding<Achievement, Cond>>(name: string, opts: { id: number; description: string; achievements: readonly AB[] }): Usecase<AB> {
+  return { name, ...opts }
+}
+export function $achievement<A extends Achievement, C extends Cond>(achievement: A, cond: C): AchievementBinding<A, C> {
+  return { achievement, cond }
+}
+
+export function $remark<C>(value: string, cond: C): Remarked<OP.Remark, C> {
+  return { op: OP.Remark, remark: value, cond }
+}
+
+export function $or<C extends Cond[]>(...cond: C): WrappedCond<OP.OR, C> {
+  return { op: OP.OR, cond }
+}
+
+export function $and<C extends Cond[]>(...cond: C): WrappedCond<OP.AND, C> {
+  return { op: OP.AND, cond }
+}
+
+export function $not<C extends Cond>(cond: C): WrappedCond<OP.NOT, C> {
+  return { op: OP.NOT, cond }
+}
+export function $modeEq<C extends Mode>(val: C): ConcreteCondBase<OP.ModeEq, C> {
+  return { op: OP.ModeEq, val }
+}
+
+export function $extendsAchievement<C extends Achievement>(val: C): ConcreteCondBase<OP.Extends, C> {
+  return { op: OP.Extends, val }
+}
+
+export function $banchoBeatmapIdEq<C>(val: C): ConcreteCondBase<OP.BanchoBeatmapIdEq, C> {
+  return { op: OP.BanchoBeatmapIdEq, val }
+}
+
+export function $beatmapMd5Eq<C>(val: C): ConcreteCondBase<OP.BeatmapMd5Eq, C> {
+  return { op: OP.BeatmapMd5Eq, val }
+}
+
+export function $noPause(): BaseCond<OP.NoPause> {
+  return { op: OP.NoPause }
+}
+
+export function $accGte<C>(val: C): ConcreteCondBase<OP.AccGte, C> {
+  return { op: OP.AccGte, val }
+}
+
+export function $scoreGte<C>(val: C): ConcreteCondBase<OP.ScoreGte, C> {
+  return { op: OP.ScoreGte, val }
+}
+
+export function $withStableMod<C extends StableMod>(mod: C): ConcreteCondBase<OP.WithStableMod, C> {
+  return { op: OP.WithStableMod, val: mod }
 }
