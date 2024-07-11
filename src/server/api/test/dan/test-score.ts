@@ -1,9 +1,9 @@
+import rf6th from '~/common/achievements/reform-6th'
 import { pretty_result, run_usecase } from '~/common/utils/dan'
 import { Mode } from '~/def'
 import { BeatmapSource, type ReferencedBeatmapCompact } from '~/def/beatmap'
 import { Grade } from '~/def/score'
 import type { UserCompact } from '~/def/user'
-import { rf10, rf9 } from '~/server/test-dan-def'
 
 const _10danMap = {
   id: 0,
@@ -95,17 +95,7 @@ const _9DanScore = {
 }
 
 export default defineEventHandler(async (_event) => {
-  const result10dan = run_usecase(rf10, _10DanScore)
-  const result9dan = run_usecase(rf9, _10DanScore)
+  const result10dan = run_usecase(rf6th, _10DanScore)
 
-  const str = pretty_result(result10dan, rf10, _10DanScore).flat()
-    .concat('-------------------------')
-    .concat(pretty_result(result9dan, rf9, _9DanScore).flat())
-    .join('\n')
-
-  console.log(str)
-  return {
-    '10dan': result10dan,
-    '9dan': result9dan,
-  }
+  const str = pretty_result(result10dan, rf6th, _10DanScore).flat().join('\n')
 })

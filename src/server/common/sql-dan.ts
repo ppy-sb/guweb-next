@@ -40,7 +40,7 @@ export function danSQLChunks<C extends Cond, AB extends AchievementBinding<Achie
     case OP.NoPause: {
       return sql`false`
     }
-    case OP.WithMod: {
+    case OP.WithStableMod: {
       const { val } = cond
       return sql`${table.scores.mods} & ${val} = ${val}`
     }
@@ -49,7 +49,7 @@ export function danSQLChunks<C extends Cond, AB extends AchievementBinding<Achie
       const anyRuleset = toBanchoPyMode(val, Ruleset.Standard)
       return eq(table.scores.mode, anyRuleset)
     }
-    case OP.Commented: {
+    case OP.Remark: {
       return danSQLChunks(cond.cond, achievements, table)
     }
     case OP.NOT: {
