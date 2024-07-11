@@ -4,6 +4,7 @@ import { IdTransformable, ScoreIdTransformable } from './@extends'
 import type { ActiveMode, ActiveRuleset, LeaderboardRankingSystem, PPRankingSystem } from '~/def/common'
 import type { RulesetScore } from '~/def/score'
 import type { UserCompact } from '~/def/user'
+import { type Achievement, type Cond, type Usecase } from '~/def/dan'
 
 export namespace ScoreProvider {
 
@@ -53,6 +54,28 @@ export abstract class ScoreProvider<TScoreId, TId> extends Mixin(IdTransformable
   >
   abstract findOne(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>>
   abstract findMany(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>[]>
+
+  abstract runCustomAchievement(opt: Usecase): Promise<Array<{
+    achievement: Achievement
+    cond: Cond
+    results: {
+      player: {
+        id: TId
+        name: string
+      }
+      score: {
+        id: TScoreId
+        accuracy: number
+        score: number
+      }
+      beatmap: {
+        id: TId
+        md5: string
+        artist: string
+        title: string
+      }
+    }[]
+  }>>
 
   // abstract recents(opt: ClanProvider.RecentScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>
   // abstract tops(opt: ClanProvider.TopScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>

@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server'
-import { object, string } from 'zod'
-import { router as _router } from '../trpc'
+import { any, object, string } from 'zod'
+import { router as _router, publicProcedure } from '../trpc'
 import { optionalUserProcedure } from '../middleware/optional-user'
 import { ScoreProvider, scores } from '~/server/singleton/service'
 import { UserRole } from '~/def/user'
@@ -33,4 +33,20 @@ export const router = _router({
       }
       raise(TRPCError, { message: 'user restricted', code: 'NOT_FOUND' })
     }),
+
+  dan: _router({
+    userRule: publicProcedure.input(any()).query(async ({ input }) => {
+      const result = await scores.runCustomAchievement(input)
+      return result.map(i => ({
+        ...i,
+        results: i.results.map(s => ({
+          ...s,
+          score: {
+            ...s.score,
+            id: ScoreProvider.scoreIdToString(s.score.id),
+          },
+        })),
+      }))
+    }),
+  }),
 })
