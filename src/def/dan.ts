@@ -42,7 +42,7 @@ export interface Remarked<O, V> extends WrappedCond<O, V> {
   remark: string
 }
 
-type UConcreteCond =
+export type UConcreteCond =
   | ConcreteCondBase<OP.BanchoBeatmapIdEq, number>
   | ConcreteCondBase<OP.BeatmapMd5Eq, string>
   | ConcreteCondBase<OP.AccGte, number>
