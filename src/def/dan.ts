@@ -12,7 +12,7 @@ export enum Achievement {
 }
 
 export enum OP {
-  Commented,
+  Remark,
   OR,
   AND,
   NOT,
@@ -23,24 +23,22 @@ export enum OP {
   NoPause,
   AccGte,
   ScoreGte,
-  WithMod,
-  // ComboGte,
-  // MissLte,
+  WithStableMod,
 }
 
-interface BaseCond<O> {
+export interface BaseCond<O> {
   op: O
 }
 
-interface ConcreteCondBase<O, V> extends BaseCond<O> {
+export interface ConcreteCondBase<O, V> extends BaseCond<O> {
   val: V
 }
 
-interface WrappedCond<O, C> extends BaseCond<O> {
+export interface WrappedCond<O, C> extends BaseCond<O> {
   cond: C
 }
 
-interface Remarked<O, V> extends WrappedCond<O, V> {
+export interface Remarked<O, V> extends WrappedCond<O, V> {
   remark: string
 }
 
@@ -49,13 +47,13 @@ type UConcreteCond =
   | ConcreteCondBase<OP.BeatmapMd5Eq, string>
   | ConcreteCondBase<OP.AccGte, number>
   | ConcreteCondBase<OP.ScoreGte, number>
-  | ConcreteCondBase<OP.WithMod, StableMod>
+  | ConcreteCondBase<OP.WithStableMod, StableMod>
   | ConcreteCondBase<OP.ModeEq, Mode>
   | BaseCond<OP.NoPause>
 
 type UWrappedCond =
   | WrappedCond<OP.NOT, Cond>
-  | Remarked<OP.Commented, Cond>
+  | Remarked<OP.Remark, Cond>
 
 type UDeepCond =
   | WrappedCond<OP.AND, readonly Cond[]>

@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { testDB } from '~/server/test-dan-def'
+import testData from '~/common/achievements/reform-6th'
 import { useDrizzle } from '~/server/backend/bancho.py/server/source/drizzle'
 import * as schema from '~/server/backend/bancho.py/drizzle/schema'
 import { danSQLChunks } from '~/server/common/sql-dan'
@@ -11,6 +11,7 @@ const tbl = {
   beatmaps: schema.beatmaps,
   sources: schema.sources,
 }
+
 const _sql = db.select({
   player: {
     id: tbl.users.id,
@@ -36,9 +37,10 @@ const _sql = db.select({
   .innerJoin(tbl.users, eq(tbl.scores.userId, tbl.users.id))
   .limit(10)
   .$dynamic()
+
 export default defineEventHandler(async () => {
   return {
-    cond: testDB.achievements[0].cond,
-    result: await _sql.where(danSQLChunks(testDB.achievements[0].cond, testDB.achievements, tbl)),
+    cond: testData.achievements[0].cond,
+    result: await _sql.where(danSQLChunks(testData.achievements[0].cond, testData.achievements, tbl)),
   }
 })
