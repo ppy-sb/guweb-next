@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import type { Id } from '..'
 import * as schema from '../drizzle/schema'
 import { config as _config } from '../env'
@@ -14,11 +14,15 @@ import {
   toScore,
   toUserCompact,
 } from '../transforms'
+import { BanchoPyScoreStatus } from '../enums'
 import { useDrizzle } from './source/drizzle'
 import { GucchoError } from '~/def/messages'
 import type {
   ScoreProvider as Base,
 } from '$base/server'
+import { type Mode, type Rank, type Ruleset } from '~/def'
+import { type Achievement, type AchievementBinding, type Cond, type Usecase } from '~/def/dan'
+import { danSQLChunks } from '~/server/common/sql-dan'
 
 const config = _config()
 const drizzle = useDrizzle(schema)
@@ -116,5 +120,76 @@ export class ScoreProvider implements Base<bigint, Id> {
     const scores = await this.#getQuery(opt).limit(20)
 
     return scores.map(this.#transformScore).filter(TSFilter)
+  }
+
+  tbl = {
+    users: schema.users,
+    scores: schema.scores,
+    beatmaps: schema.beatmaps,
+    sources: schema.sources,
+  }
+
+  _sql = this.drizzle.select({
+    player: {
+      id: this.tbl.users.id,
+      name: this.tbl.users.name,
+    },
+    score: {
+      id: this.tbl.scores.id,
+      accuracy: this.tbl.scores.accuracy,
+      score: this.tbl.scores.score,
+    },
+    beatmap: {
+      id: this.tbl.beatmaps.id,
+      md5: this.tbl.beatmaps.md5,
+      title: this.tbl.beatmaps.title,
+      artist: this.tbl.beatmaps.artist,
+    },
+  })
+    .from(this.tbl.scores)
+    .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+    .innerJoin(this.tbl.sources, and(
+      eq(this.tbl.beatmaps.server, this.tbl.sources.server),
+      eq(this.tbl.beatmaps.setId, this.tbl.sources.id),
+    ))
+    .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
+    .orderBy(desc(this.tbl.scores.score))
+    .limit(10)
+
+  async runCustomAchievement(opt: Usecase<AchievementBinding<Achievement, Cond>>): Promise<Array<{
+    achievement: Achievement
+    cond: Cond
+    results: {
+      player: {
+        id: Id
+        name: string
+      }
+      score: {
+        id: bigint
+        accuracy: number
+        score: number
+      }
+      beatmap: {
+        id: Id
+        md5: string
+        artist: string
+        title: string
+      }
+    }[]
+  }>> {
+    return await Promise.all(
+      opt.achievements.map(
+        async a => ({
+          achievement: a.achievement,
+          cond: a.cond,
+          results: await this._sql.where(
+            and(
+              eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
+              danSQLChunks(a.cond, opt.achievements, this.tbl),
+            )
+          ),
+        })
+      )
+    )
   }
 }
