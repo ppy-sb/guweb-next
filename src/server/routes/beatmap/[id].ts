@@ -21,5 +21,5 @@ export default defineEventHandler(async (h3Event) => {
     })
   }
 
-  await sendRedirect(h3Event, `/beatmapset/${bm.beatmapset.id}?$md5=${bm.md5}&mode=${bm.mode}`)
+  await sendRedirect(h3Event, `/beatmapset/${bm.beatmapset.id}?beatmap=${bm.md5}&mode=${bm.mode}`)
 })
