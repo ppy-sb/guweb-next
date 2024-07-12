@@ -144,14 +144,15 @@ export class ScoreProvider implements Base<bigint, Id> {
       md5: this.tbl.beatmaps.md5,
       title: this.tbl.beatmaps.title,
       artist: this.tbl.beatmaps.artist,
+      version: this.tbl.beatmaps.version,
     },
   })
     .from(this.tbl.scores)
     .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
-    .innerJoin(this.tbl.sources, and(
-      eq(this.tbl.beatmaps.server, this.tbl.sources.server),
-      eq(this.tbl.beatmaps.setId, this.tbl.sources.id),
-    ))
+    // .innerJoin(this.tbl.sources, and(
+    //   eq(this.tbl.beatmaps.server, this.tbl.sources.server),
+    //   eq(this.tbl.beatmaps.setId, this.tbl.sources.id),
+    // ))
     .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
     .orderBy(desc(this.tbl.scores.score))
     .limit(10)
@@ -174,6 +175,7 @@ export class ScoreProvider implements Base<bigint, Id> {
         md5: string
         artist: string
         title: string
+        version: string
       }
     }[]
   }>> {
@@ -187,7 +189,7 @@ export class ScoreProvider implements Base<bigint, Id> {
               eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
               danSQLChunks(a.cond, opt.achievements, this.tbl),
             )
-          ),
+          ).execute(),
         })
       )
     )
