@@ -123,7 +123,7 @@ de-DE:
       <div class="text-xl">
         Services
       </div>
-      <div class="grid grid-flow-row gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div class="grid grid-flow-row gap-2 md:grid-cols-2 lg:grid-cols-3 xl:md:grid-cols-2 lg:grid-cols-4">
         <div
           v-for="(service, key) in publicData"
           :key="key"
