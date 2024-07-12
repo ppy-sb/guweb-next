@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { $enum } from 'ts-enum-util'
-import { StableMod } from '../../../def/score'
+import draggable from 'vuedraggable'
+import { StableMod } from '~/def/score'
 import {
+  Achievement,
   type Cond,
   OP,
   type UConcreteCond,
 } from '~/def/dan'
+import { modes } from '~/def'
 
-withDefaults(defineProps<{ listMode: boolean }>(), { listMode: false })
+withDefaults(defineProps<{ listMode?: boolean }>(), { listMode: false })
 
 const emit = defineEmits<{
   (e: 'delete'): void
 }>()
+
+const drag = ref(false)
 
 const cond = defineModel<Cond>()
 
@@ -23,7 +28,6 @@ const inline = [
   OP.ModeEq,
   OP.BanchoBeatmapIdEq,
   OP.BeatmapMd5Eq,
-  OP.Extends,
   OP.WithStableMod,
   OP.Extends,
 ]
@@ -31,7 +35,7 @@ const concrete = inline.concat(OP.NoPause)
 
 // const isInline = computed(() => inline.includes(cond.value?.op as OP))
 
-function isConcreteCond(op: OP): op is UConcreteCond['op'] {
+function isConcreteCond(op: OP): op is UConcreteCond['op'] | OP.Extends {
   return concrete.includes(op)
 }
 function selectCond() {
@@ -46,67 +50,134 @@ function selectCond() {
 
 <template>
   <div
-    class="col-span-4 grid grid-cols-4 bg-gbase-500/10 border-gbase-500/20 border rounded-xl p-2 gap-2"
+    class="grid grid-cols-12 col-span-12 gap-2 p-2 border-l-4 rounded shadow-inner shadow-gbase-500/35 bg-base-300/40 ms-2 border-gbase-500/50"
   >
     <template v-if="cond">
-      <select
-        v-model="cond.op"
-        name="cond"
-        class="select select-sm"
-        @change="selectCond"
-      >
-        <option disabled value="">
-          select
-        </option>
-        <option v-for="op in ops" :key="op" :value="op">
-          {{ OP[op] }}
-        </option>
-      </select>
-      <template v-if="isConcreteCond(cond.op) && cond.op !== OP.NoPause">
-        <div v-if="cond.op === OP.WithStableMod" class="col-span-4 grid grid-cols-4 gap-x-6">
-          <div v-for="mod in $enum(StableMod).getValues()" :key="mod" class="form-control">
-            <label class="label cursor-pointer">
+      <div class="col-span-12 sm:col-span-6 md:col-span-3">
+        <div class="form-control">
+          <select
+            v-model="cond.op"
+            name="cond"
+            class="select select-sm"
+            @change="selectCond"
+          >
+            <option disabled value="">
+              select
+            </option>
+            <option v-for="op in ops" :key="op" :value="op">
+              {{ OP[op] }}
+            </option>
+          </select>
+        </div>
+      </div>
+      <template v-if="cond.op === OP.NoPause">
+        <div class="hidden sm:block sm:col-span-12 sm:col-span-6 md:col-span-3" />
+      </template>
+      <template v-else-if="isConcreteCond(cond.op)">
+        <div v-if="cond.op === OP.ModeEq" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+          <select
+            v-model="cond.val"
+            name="mode"
+            class="select select-sm"
+            @change="selectCond"
+          >
+            <option disabled value="">
+              select
+            </option>
+            <option v-for="m in modes" :key="m" :value="m">
+              {{ m }}
+            </option>
+          </select>
+        </div>
+        <div v-else-if="cond.op === OP.Extends" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+          <select
+            v-model="cond.val"
+            name="mode"
+            class="select select-sm"
+            @change="selectCond"
+          >
+            <option disabled value="">
+              select
+            </option>
+            <option v-for="ach in $enum(Achievement).getValues()" :key="ach" :value="ach">
+              {{ Achievement[ach] }}
+            </option>
+          </select>
+        </div>
+        <div v-else-if="cond.op === OP.WithStableMod" class="grid grid-cols-12 col-span-12 gap-0 gap-x-6">
+          <div v-for="mod in $enum(StableMod).getValues()" :key="mod" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+            <label class="cursor-pointer label">
               <span class="label-text">{{ StableMod[mod] }}</span>
               <input type="checkbox" :checked="!!((cond.val as number) & mod)" class="checkbox" @change="(cond.val = (cond.val as number) ^ mod)">
             </label>
           </div>
         </div>
+
         <input
           v-else
           v-model="cond.val"
           :type="(cond.op === OP.AccGte || cond.op === OP.ScoreGte) ? 'number' : 'text'"
-          class="input input-sm col-span-3"
+          class="col-span-12 sm:col-span-6 md:col-span-3 input input-sm"
+          :class="{
+            'col-span-12 md:col-span-9': cond.op !== OP.AccGte && cond.op !== OP.ScoreGte,
+          }"
         >
       </template>
       <template v-else>
-        <div v-if="cond.op !== undefined" class="ps-3 py-2 ms-3 border-l-4 border-gbase-500 grid grid-cols-4 col-span-4 gap-2">
-          <div v-if="cond.op === OP.Remark" class="form-control col-span-4">
+        <div v-if="cond.op !== undefined" class="grid grid-cols-12 col-span-12 gap-2 ">
+          <div v-if="cond.op === OP.Remark" class="w-full col-span-12">
             <label for="remark" class="label">Remark:</label>
             <input name="remark" type="text" class="input input-sm input-info">
           </div>
           <app-dan-cond v-if="cond.op === OP.Remark || cond.op === OP.NOT" v-model="cond.cond" @delete="cond = undefined" />
-
-          <div v-if="cond.op === OP.AND || cond.op === OP.OR" class="col-span-4 space-y-2">
-            <app-dan-cond v-for="(_, i) in cond.cond" :key="i" v-model="cond.cond[i]" :list-mode="true" @delete="(cond.cond as Cond[]).splice(i, 1)" />
-            <button class="btn btn-sm btn-success" @click="(cond.cond as any).push({})">
-              add
-            </button>
-          </div>
+          <draggable
+            v-else-if="cond.op === OP.AND || cond.op === OP.OR" v-model="cond.cond"
+            class="grid grid-cols-12 col-span-12 space-y-2"
+            v-bind="{
+              animation: 200,
+              group: 'description',
+              disabled: false,
+              ghostClass: 'ghost',
+            }"
+            item-key="op"
+            @start="drag = true"
+            @end="drag = false"
+          >
+            <template #item="{ index }">
+              <app-dan-cond v-model="cond.cond[index]" :list-mode="true" @delete="(cond.cond as Cond[]).splice(index, 1)" />
+            </template>
+            <template #footer>
+              <button class="col-span-12 btn btn-sm btn-success" @click="(cond.cond as any).push({})">
+                add
+              </button>
+            </template>
+          </draggable>
         </div>
       </template>
-      <button class="btn btn-sm btn-danger" @click="cond = undefined">
+      <button class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-sm btn-secondary" @click="cond = undefined">
         reset
       </button>
-      <button v-if="listMode" class="btn btn-sm btn-danger" @click="emit('delete')">
+      <button v-if="listMode" class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-sm btn-warning" @click="emit('delete')">
         delete
       </button>
     </template>
     <template v-else>
-      <button class="btn btn-sm" @click="cond = {}">
-        setup cond
-      </button>
+      <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+        <button class=" btn btn-sm" @click="cond = {}">
+          init
+        </button>
+      </div>
+      <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+        <button v-if="listMode" class="btn btn-sm btn-warning" @click="emit('delete')">
+          delete
+        </button>
+      </div>
     </template>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.ghost {
+  @apply blur-sm brightness-125 opacity-20
+}
+</style>
