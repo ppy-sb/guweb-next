@@ -339,3 +339,40 @@ export function $scoreGte<C>(val: C): ConcreteCondBase<OP.ScoreGte, C> {
 export function $withStableMod<C extends StableMod>(mod: C): ConcreteCondBase<OP.WithStableMod, C> {
   return { op: OP.WithStableMod, val: mod }
 }
+
+export function validateCond<T extends Cond>(cond: T): T {
+  switch (cond.op) {
+    case OP.BanchoBeatmapIdEq:
+    case OP.BeatmapMd5Eq:
+    case OP.AccGte:
+    case OP.ScoreGte:
+    case OP.ModeEq:
+    case OP.WithStableMod:
+    case OP.Extends:
+      return { op: cond.op, val: cond.val } as T
+
+    case OP.Remark:
+      return { op: cond.op, remark: cond.remark, cond: validateCond(cond.cond) } as T
+
+    case OP.NoPause:
+      return { op: cond.op } as T
+    case OP.NOT:
+      return { op: cond.op, cond: validateCond(cond.cond) } as T
+
+    case OP.OR:
+    case OP.AND:
+      return { op: cond.op, cond: cond.cond.filter(Boolean).map(validateCond) } as unknown as T
+
+    default: assertNotReachable(cond)
+  }
+}
+
+export function validateUsecase<U extends Usecase>(compose: U): U {
+  return {
+    ...compose,
+    achievements: compose.achievements.map(i => ({
+      ...i,
+      cond: validateCond(i.cond),
+    })),
+  }
+}
