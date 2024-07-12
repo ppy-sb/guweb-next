@@ -130,7 +130,7 @@ de-DE:
         <icon name="ion:search-outline" class="w-6 h-6 align-middle" />
       </div>
       <div class="space-y-6 collapse-content">
-        <div class="gap-2 sm:grid sm:grid-cols-2 md:grid-cols-4">
+        <div class="gap-2 sm:grid sm:grid-cols-2 md:md:grid-cols-2 lg:grid-cols-4">
           <div class="form-control">
             <label class="label">
               <span class="label-text">{{ t('user-id') }}</span>

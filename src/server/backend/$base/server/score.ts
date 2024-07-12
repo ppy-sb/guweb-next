@@ -73,6 +73,7 @@ export abstract class ScoreProvider<TScoreId, TId> extends Mixin(IdTransformable
         md5: string
         artist: string
         title: string
+        version: string
       }
     }[]
   }>>
