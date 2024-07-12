@@ -191,7 +191,7 @@ const ScoreToNextLevel = computed(
 
 <style scoped lang="postcss">
 .stats {
-  /* @apply grid-flow-row sm:grid sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 */
+  /* @apply grid-flow-row sm:grid sm:grid-cols-2 md:md:grid-cols-2 lg:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 */
   @apply flex flex-wrap justify-around;
 }
 
