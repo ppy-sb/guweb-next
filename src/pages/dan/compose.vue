@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
-import {} from '~/common/utils/dan'
+import { validateUsecase } from '~/common/utils/dan'
 import { Achievement, type AchievementBinding, type Usecase } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
+
+const navigator = process.server ? undefined : window.navigator
 
 type RouterOutput = inferRouterOutputs<AppRouter>
 const achievements = [Achievement.Pass, Achievement.NoPause]
 const typeAC = [Achievement.Pass, Achievement.NoPause]
-const navigator = process.server ? undefined : window.navigator
 const app = useNuxtApp()
 const defaultValue = {
   id: 0,
@@ -19,6 +20,7 @@ const defaultValue = {
 const compose = ref<Usecase>(defaultValue)
 
 const data = ref<RouterOutput['score']['dan']['userRule']>()
+const loading = ref(false)
 
 watch(compose, () => {
   localStorage.setItem('dan-compose', JSON.stringify(compose.value))
@@ -33,10 +35,24 @@ onMounted(() => {
 })
 
 async function runDB() {
-  data.value = await app.$client.score.dan.userRule.query(compose.value)
+  loading.value = true
+  try {
+    data.value = await app.$client.score.dan.userRule.query(validateUsecase(compose.value))
+  }
+  finally {
+    loading.value = false
+  }
 }
 function reset() {
   compose.value = defaultValue
+}
+
+async function readClipboard() {
+  const text = await navigator?.clipboard.readText()
+  if (!text) {
+    return
+  }
+  compose.value = validateUsecase(JSON.parse(text))
 }
 </script>
 
@@ -113,9 +129,15 @@ function reset() {
         copy to clipboard
       </button>
       <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="readClipboard"
+      >
+        read from clipboard
+      </button>
+      <button
         class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-warning" @click="runDB"
       >
         run in db
+        <i v-if="loading" class="loading" />
       </button>
     </div>
     <div v-if="data" class="py-4 space-y-4">
