@@ -1,44 +1,67 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
 import { validateUsecase } from '~/common/utils/dan'
-import { type Dan, type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
+import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
-
-// eslint-disable-next-line n/prefer-global/process
-const navigator = process.server ? undefined : window.navigator
 
 type RouterOutput = inferRouterOutputs<AppRouter>
 const requirements = [Requirement.Pass, Requirement.NoPause]
 const typeAC = [Requirement.Pass, Requirement.NoPause]
 const app = useNuxtApp()
-const defaultValue: DatabaseDan<string> = {
-  id: '0',
+const defaultValue: DatabaseDan<string> & { _db: boolean } = {
+  id: '',
   name: '',
   description: '',
   requirements: [],
+  _db: false,
 }
 
-const compose = ref<typeof defaultValue>(defaultValue)
+const compose = ref<typeof defaultValue>(structuredClone(defaultValue))
 
-const data = ref<RouterOutput['score']['dan']['userRule']>()
+const data = ref<RouterOutput['dan']['userRule']>()
 const loading = ref(false)
 
 watch(compose, () => {
   localStorage.setItem('dan-compose', JSON.stringify(compose.value))
 }, { deep: true })
 
-onMounted(() => {
+function loadLast() {
   const save = localStorage.getItem('dan-compose')
   if (!save) {
     return
   }
   compose.value = JSON.parse(save)
-})
+}
+
+function copy() {
+  navigator?.clipboard.writeText(JSON.stringify(compose))
+}
+
+async function readClipboard() {
+  const text = await navigator.clipboard.readText()
+  if (!text) {
+    return
+  }
+  compose.value = validateUsecase(JSON.parse(text))
+}
+
+async function getDB() {
+  loading.value = true
+  try {
+    compose.value = {
+      ...await app.$client.dan.get.query(compose.value.id),
+      _db: true,
+    }
+  }
+  finally {
+    loading.value = false
+  }
+}
 
 async function runDB() {
   loading.value = true
   try {
-    data.value = await app.$client.score.dan.userRule.query(validateUsecase(compose.value))
+    data.value = await app.$client.dan.userRule.query(validateUsecase(compose.value))
   }
   finally {
     loading.value = false
@@ -48,12 +71,15 @@ function reset() {
   compose.value = defaultValue
 }
 
-async function readClipboard() {
-  const text = await navigator?.clipboard.readText()
-  if (!text) {
-    return
+async function saveDB() {
+  compose.value = {
+    ...await app.$client.dan.save.mutate(compose.value),
+    _db: true,
   }
-  compose.value = validateUsecase(JSON.parse(text))
+}
+async function deleteDB() {
+  await app.$client.dan.delete.mutate(compose.value.id)
+  reset()
 }
 </script>
 
@@ -69,7 +95,7 @@ async function readClipboard() {
       </div>
       <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
         <label for="name" class="label">ID</label>
-        <input id="name" v-model="compose.id" class="input" type="text" disabled name="name">
+        <input id="name" v-model="compose.id" class="input" type="text" name="name" @change="getDB">
       </div>
       <div class="col-span-12 form-control">
         <label for="description" class="label">Description</label>
@@ -125,7 +151,12 @@ async function readClipboard() {
         reset
       </button>
       <button
-        class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="navigator?.clipboard.writeText(JSON.stringify(compose))"
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="loadLast"
+      >
+        reopen last closed
+      </button>
+      <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="copy"
       >
         copy to clipboard
       </button>
@@ -138,6 +169,18 @@ async function readClipboard() {
         class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-warning" @click="runDB"
       >
         run in db
+        <i v-if="loading" class="loading" />
+      </button>
+      <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-success" @click="saveDB"
+      >
+        save
+        <i v-if="loading" class="loading" />
+      </button>
+      <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-error" :disabled="!compose._db" @click="deleteDB"
+      >
+        delete
         <i v-if="loading" class="loading" />
       </button>
     </div>
