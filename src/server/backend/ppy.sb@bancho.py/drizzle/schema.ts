@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm'
-import { bigint, date, datetime, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, tinyint, varchar } from 'drizzle-orm/mysql-core'
-import { clans, users } from '../../bancho.py/drizzle/schema'
+import { bigint, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, tinyint, varchar } from 'drizzle-orm/mysql-core'
+import { clans, scores, users } from '../../bancho.py/drizzle/schema'
 
 export {
   achievements, beatmaps, channels,
@@ -59,6 +59,7 @@ export const scoresForeign = mysqlTable('scores_foreign', {
     scoresForeignId: primaryKey({ columns: [table.id], name: 'scores_foreign_id' }),
   }
 })
+
 export const scoresSuspicion = mysqlTable('scores_suspicion', {
   scoreId: bigint('score_id', { mode: 'number' }).autoincrement().notNull(),
   suspicionReason: varchar('suspicion_reason', { length: 128 }).notNull(),
@@ -72,6 +73,47 @@ export const scoresSuspicion = mysqlTable('scores_suspicion', {
   }
 })
 
+export const dans = mysqlTable('dans', {
+  id: int('id').autoincrement().notNull().primaryKey(),
+  name: varchar('name', { length: 128 }).notNull(),
+  description: text('description'),
+  creator: int('creator').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  updater: int('updater').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow().onUpdateNow(),
+})
+
+export const danConds = mysqlTable('dan_conds', {
+  id: int('id').autoincrement().notNull().primaryKey(),
+  cond: json('cond').notNull(),
+  creator: int('creator').references(() => users.id, { onDelete: 'set null' }),
+  updater: int('updater').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow().onUpdateNow(),
+})
+
+export const requirementCondBindings = mysqlTable('requirement_cond_bindings', {
+  id: int('id').autoincrement().notNull().primaryKey(),
+  type: mysqlEnum('achievement', ['pass', 'no-pause']).notNull(),
+  danId: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  condId: int('cond').notNull().references(() => danConds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+})
+
+export const requirementClearedScores = mysqlTable('requirement_cleared_scores', {
+  scoreId: bigint('score_id', { mode: 'bigint', unsigned: true })
+    .notNull()
+    .references(() => scores.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  requirement: int('requirement').notNull(),
+}, tbl => ({
+  requirement_cleared_binding: foreignKey({
+    columns: [tbl.requirement],
+    foreignColumns: [requirementCondBindings.id],
+    name: 'requirement_cleared_binding',
+  })
+    .onDelete('cascade')
+    .onUpdate('cascade'),
+}))
+
 export const userpagesRelations = relations(userpages, ({ one }) => ({
   user: one(users, { fields: [userpages.userId], references: [users.id] }),
 }))
@@ -79,4 +121,18 @@ export const userpagesRelations = relations(userpages, ({ one }) => ({
 export const usersRelations = relations(users, ({ one }) => ({
   clan: one(clans, { fields: [users.clanId], references: [clans.id] }),
   userpages: one(userpages, { fields: [users.id], references: [userpages.userId] }),
+}))
+
+export const danRelations = relations(dans, ({ many }) => ({
+  requirements: many(requirementCondBindings),
+}))
+
+export const requirementCondBindingRelations = relations(requirementCondBindings, ({ one }) => ({
+  dan: one(dans, { fields: [requirementCondBindings.danId], references: [dans.id] }),
+  cond: one(danConds, { fields: [requirementCondBindings.condId], references: [danConds.id] }),
+}))
+
+export const requirementClearedScoreRelations = relations(requirementClearedScores, ({ one }) => ({
+  score: one(scores, { fields: [requirementClearedScores.scoreId], references: [scores.id] }),
+  requirement: one(requirementCondBindings, { fields: [requirementClearedScores.requirement], references: [requirementCondBindings.id] }),
 }))
