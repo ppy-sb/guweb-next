@@ -62,10 +62,10 @@ export const scoresForeign = mysqlTable('scores_foreign', {
 
 export const scoresSuspicion = mysqlTable('scores_suspicion', {
   scoreId: bigint('score_id', { mode: 'number' }).autoincrement().notNull(),
-  suspicionReason: varchar('suspicion_reason', { length: 128 }).notNull(),
-  ignored: tinyint('ignored').notNull(),
+  reason: varchar('reason', { length: 128 }).notNull(),
+  isChecked: tinyint('is_checked').notNull(),
   detail: json('detail').notNull(),
-  suspicionTime: datetime('suspicion_time', { mode: 'string' }).notNull(),
+  createdAt: datetime('created_at', { mode: 'string' }).notNull(),
 },
 (table) => {
   return {
