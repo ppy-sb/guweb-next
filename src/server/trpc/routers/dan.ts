@@ -2,7 +2,7 @@ import { any, number, object, string } from 'zod'
 import { router as _router, publicProcedure } from '../trpc'
 import { staffProcedure } from '../middleware/role'
 import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
-import { type Dan, type DatabaseDan } from '~/def/dan'
+import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, type Requirement, type RequirementCondBinding } from '~/def/dan'
 import { validateUsecase } from '~/common/utils/dan'
 
 export const router = _router({
@@ -20,7 +20,7 @@ export const router = _router({
       }
     }),
 
-  delete: publicProcedure
+  delete: staffProcedure
     .input(string())
     .mutation(async ({ input }) => await dans.delete(DanProvider.stringToId(input))),
 
@@ -30,16 +30,24 @@ export const router = _router({
       page: number().min(0).max(5).default(0),
       perPage: number().min(1).max(10).default(10),
     }))
-    .query(async ({ input }): Promise<DatabaseDan<string>[]> => {
-      const result = await dans.search(input)
-      return result.map(i => ({
+    .query(async ({ input }) => {
+      const searchResult = await dans.search(input)
+      const scoreResult = await Promise.all(searchResult.map(s => dans.runCustomDan(s)))
+      return searchResult.map((i, idxDan) => ({
         ...i,
         id: DanProvider.idToString(i.id),
-        requirements: i.requirements.map(i => ({
+        requirements: i.requirements.map((i, idxReq) => ({
           ...i,
           id: DanProvider.idToString(i.id),
-        })),
-      }))
+          scores: scoreResult[idxDan][idxReq].results.map(i => ({
+            ...i,
+            score: {
+              ...i.score,
+              id: ScoreProvider.scoreIdToString(i.score.id),
+            },
+          })),
+        })) satisfies DatabaseRequirementCondBinding<string, Requirement, Cond>[],
+      })) satisfies DatabaseDan<string>[]
     }),
 
   save: staffProcedure
@@ -51,6 +59,10 @@ export const router = _router({
       const i = await dans.saveComposed({
         ...input,
         id: input.id ? DanProvider.stringToId(input.id) : undefined,
+        requirements: input.requirements.map(i => ({
+          ...i,
+          id: i.id ? DanProvider.stringToId(i.id) : undefined,
+        })),
       }, ctx.user)
       return {
         ...i,
