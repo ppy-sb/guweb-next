@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import type { Id } from '..'
 import * as schema from '../drizzle/schema'
 import { config as _config } from '../env'
@@ -20,8 +20,7 @@ import { GucchoError } from '~/def/messages'
 import type {
   ScoreProvider as Base,
 } from '$base/server'
-import { type Mode, type Rank, type Ruleset } from '~/def'
-import { type Achievement, type AchievementBinding, type Cond, type Usecase } from '~/def/dan'
+import { type Cond, type Dan, type Requirement, type RequirementCondBinding } from '~/def/dan'
 import { danSQLChunks } from '~/server/common/sql-dan'
 
 const config = _config()
@@ -156,8 +155,8 @@ export class ScoreProvider implements Base<bigint, Id> {
     .orderBy(desc(this.tbl.scores.score))
     .limit(10)
 
-  async runCustomAchievement(opt: Usecase<AchievementBinding<Achievement, Cond>>): Promise<Array<{
-    achievement: Achievement
+  async runCustomDan(opt: Dan): Promise<Array<{
+    achievement: Requirement
     cond: Cond
     results: {
       player: {
@@ -179,14 +178,14 @@ export class ScoreProvider implements Base<bigint, Id> {
     }[]
   }>> {
     return await Promise.all(
-      opt.achievements.map(
+      opt.requirements.map(
         async a => ({
-          achievement: a.achievement,
+          achievement: a.type,
           cond: a.cond,
           results: await this._sql.where(
             and(
               eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
-              danSQLChunks(a.cond, opt.achievements, this.tbl),
+              danSQLChunks(a.cond, opt.requirements, this.tbl),
             )
           ).execute(),
         })
