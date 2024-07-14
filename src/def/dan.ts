@@ -5,10 +5,9 @@ import {
 import type { UserCompact } from './user'
 import { type Mode } from '.'
 
-export enum Achievement {
+export enum Requirement {
   Pass,
   NoPause,
-  Custom,
 }
 
 export enum OP {
@@ -26,15 +25,15 @@ export enum OP {
   WithStableMod,
 }
 
-export interface BaseCond<O> {
-  op: O
+export interface CondBase<O> {
+  type: O
 }
 
-export interface ConcreteCondBase<O, V> extends BaseCond<O> {
+export interface ConcreteCond<O, V> extends CondBase<O> {
   val: V
 }
 
-export interface WrappedCond<O, C> extends BaseCond<O> {
+export interface WrappedCond<O, C> extends CondBase<O> {
   cond: C
 }
 
@@ -43,13 +42,13 @@ export interface Remarked<O, V> extends WrappedCond<O, V> {
 }
 
 export type UConcreteCond =
-  | ConcreteCondBase<OP.BanchoBeatmapIdEq, number>
-  | ConcreteCondBase<OP.BeatmapMd5Eq, string>
-  | ConcreteCondBase<OP.AccGte, number>
-  | ConcreteCondBase<OP.ScoreGte, number>
-  | ConcreteCondBase<OP.WithStableMod, StableMod>
-  | ConcreteCondBase<OP.ModeEq, Mode>
-  | BaseCond<OP.NoPause>
+  | ConcreteCond<OP.BanchoBeatmapIdEq, number>
+  | ConcreteCond<OP.BeatmapMd5Eq, string>
+  | ConcreteCond<OP.AccGte, number>
+  | ConcreteCond<OP.ScoreGte, number>
+  | ConcreteCond<OP.WithStableMod, StableMod>
+  | ConcreteCond<OP.ModeEq, Mode>
+  | CondBase<OP.NoPause>
 
 type UWrappedCond =
   | WrappedCond<OP.NOT, Cond>
@@ -59,46 +58,53 @@ type UDeepCond =
   | WrappedCond<OP.AND, readonly Cond[]>
   | WrappedCond<OP.OR, readonly Cond[]>
 
-type ExtendingCond = ConcreteCondBase<OP.Extends, Achievement>
+type ExtendingCond = ConcreteCond<OP.Extends, Requirement>
 export type UComputedCond = UDeepCond | ExtendingCond
 export type Cond =
   | UConcreteCond
   | UComputedCond
   | UWrappedCond
 
-type BaseCondOP = UConcreteCond['op']
-type DeepCondOP = UDeepCond['op']
-type WrappingCondOP = UWrappedCond['op']
-type ExtendingCondOP = ExtendingCond['op']
+export type ConcreteCondOP = UConcreteCond['type']
+type DeepCondOP = UDeepCond['type']
+type WrappingCondOP = UWrappedCond['type']
+type ExtendingCondOP = ExtendingCond['type']
 
-export interface AchievementBinding<A, C> {
-  achievement: A
+interface WithId<I> {
+  id: I
+}
+
+export interface RequirementCondBinding<R, C> {
+  type: R
   cond: C
 }
 
-export interface Usecase<AB extends AchievementBinding<Achievement, Cond> = AchievementBinding<Achievement, Cond>> {
-  id: number
+export interface DatabaseRequirementCondBinding<I, R, C> extends RequirementCondBinding<R, C>, WithId<I> {}
+
+export interface Dan<RCBinding extends RequirementCondBinding<Requirement, Cond> = RequirementCondBinding<Requirement, Cond>> {
   name: string
   description: string
 
-  achievements: readonly AB[]
+  requirements: readonly RCBinding[]
 }
+
+export interface DatabaseDan<I, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> extends Dan<RCBinding>, WithId<I> {}
 
 export type DetailResult<
   C extends Cond = Cond,
-  AB extends AchievementBinding<Achievement, Cond> = AchievementBinding<Achievement, Cond>,
+  AB extends RequirementCondBinding<Requirement, Cond> = RequirementCondBinding<Requirement, Cond>,
 > =
-C extends ConcreteCondBase<infer R extends ExtendingCondOP, infer T extends Achievement>
+C extends ConcreteCond<infer R extends ExtendingCondOP, infer T extends Requirement>
   ? {
       cond: C
       result: boolean
-      detail: AchievementResult<AB>
+      detail: RequirementResult<AB>
     }
   : C extends UConcreteCond
     ? {
         cond: C
         result: boolean
-        value: C extends ConcreteCondBase<infer _O, infer _V> ? _V : never
+        value: C extends ConcreteCond<infer _O, infer _V> ? _V : never
       }
     : C extends WrappedCond<infer R extends WrappingCondOP, infer T extends Cond>
       ? {
@@ -116,14 +122,18 @@ C extends ConcreteCondBase<infer R extends ExtendingCondOP, infer T extends Achi
           }
         : never
 
-export type AchievementResult<AB extends AchievementBinding<Achievement, Cond> = AchievementBinding<Achievement, Cond>> =
-  AB extends AchievementBinding<infer A extends Achievement, infer C extends Cond>
+export type DatabaseDetailResult<I, C extends Cond = Cond, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> = DetailResult<C, RCBinding> & WithId<I>
+
+export type RequirementResult<AB extends RequirementCondBinding<Requirement, Cond> = RequirementCondBinding<Requirement, Cond>> =
+  AB extends RequirementCondBinding<infer A extends Requirement, infer C extends Cond>
     ? {
-        achievement: A
+        type: A
         result: boolean
         detail: DetailResult<C, AB>
       }
     : never
+
+export type DatabaseRequirementResult<I, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> = RequirementResult<RCBinding> & WithId<I>
 
 export type ValidatingScore = ScoreCompact<any, Mode.Mania> & {
   beatmap: BeatmapCompact<any, any>

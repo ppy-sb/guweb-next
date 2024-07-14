@@ -3,12 +3,12 @@ import { toBanchoPyMode } from '../backend/bancho.py/transforms'
 import { Ruleset } from '../../def'
 import type * as schema from '~/server/backend/bancho.py/drizzle/schema'
 import {
-  Achievement,
-  type AchievementBinding, type Cond,
-  OP,
+  type Cond,
+  OP, Requirement,
+  type RequirementCondBinding,
 } from '~/def/dan'
 
-export function danSQLChunks<C extends Cond, AB extends AchievementBinding<Achievement, Cond>>(
+export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<Requirement, Cond>>(
   cond: C,
   achievements: readonly AB[],
   table: {
@@ -17,7 +17,7 @@ export function danSQLChunks<C extends Cond, AB extends AchievementBinding<Achie
     sources: typeof schema.sources
   }
 ): SQL {
-  const { op } = cond
+  const { type: op } = cond
   switch (op) {
     case OP.BeatmapMd5Eq: {
       const { val } = cond
@@ -66,10 +66,10 @@ export function danSQLChunks<C extends Cond, AB extends AchievementBinding<Achie
     case OP.Extends: {
       const { val } = cond
       const _cond = achievements.find(
-        ({ achievement }) => achievement === val
+        ({ type: achievement }) => achievement === val
       )?.cond
         ?? raiseError(
-          `extending achievement (${Achievement[val]}) not found`
+          `extending achievement (${Requirement[val]}) not found`
         )
       return danSQLChunks(_cond, achievements, table)
     }

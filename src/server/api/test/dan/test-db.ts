@@ -40,7 +40,7 @@ const _sql = db.select({
 
 export default defineEventHandler(async () => {
   return {
-    cond: testData.achievements[0].cond,
-    result: await _sql.where(danSQLChunks(testData.achievements[0].cond, testData.achievements, tbl)),
+    cond: testData.requirements[0].cond,
+    result: await _sql.where(danSQLChunks(testData.requirements[0].cond, testData.requirements, tbl)),
   }
 })
