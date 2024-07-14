@@ -15,6 +15,7 @@ import {
 } from '~/server/backend/bancho.py/server'
 
 export { UserProvider } from './user'
+export { DanProvider } from './dan'
 
 export class AdminProvider extends BAdminProvider {}
 export class ArticleProvider extends BArticleProvider {}
