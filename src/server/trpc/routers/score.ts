@@ -5,7 +5,7 @@ import { optionalUserProcedure } from '../middleware/optional-user'
 import { ScoreProvider, scores } from '~/server/singleton/service'
 import { UserRole } from '~/def/user'
 import { validateUsecase } from '~/common/utils/dan'
-import { type Usecase } from '~/def/dan'
+import { type Dan } from '~/def/dan'
 
 export const router = _router({
   id: optionalUserProcedure
@@ -37,8 +37,8 @@ export const router = _router({
     }),
 
   dan: _router({
-    userRule: publicProcedure.input(any().refine((i): i is Usecase => validateUsecase(i))).query(async ({ input }) => {
-      const result = await scores.runCustomAchievement(input)
+    userRule: publicProcedure.input(any().refine((i): i is Dan => validateUsecase(i))).query(async ({ input }) => {
+      const result = await scores.runCustomDan(input)
       return result.map(i => ({
         ...i,
         results: i.results.map(s => ({

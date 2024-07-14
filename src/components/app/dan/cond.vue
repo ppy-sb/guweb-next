@@ -3,10 +3,10 @@ import { $enum } from 'ts-enum-util'
 import draggable from 'vuedraggable'
 import { StableMod } from '~/def/score'
 import {
-  Achievement,
+  type ConcreteCondOP,
   type Cond,
   OP,
-  type UConcreteCond,
+  Requirement,
 } from '~/def/dan'
 import { modes } from '~/def'
 
@@ -35,14 +35,14 @@ const concrete = inline.concat(OP.NoPause)
 
 // const isInline = computed(() => inline.includes(cond.value?.op as OP))
 
-function isConcreteCond(op: OP): op is UConcreteCond['op'] | OP.Extends {
+function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
   return concrete.includes(op)
 }
 function selectCond() {
   if (!cond.value) {
     return
   }
-  if (cond.value.op === OP.AND || cond.value.op === OP.OR) {
+  if (cond.value.type === OP.AND || cond.value.type === OP.OR) {
     cond.value.cond = []
   }
 }
@@ -56,7 +56,7 @@ function selectCond() {
       <div class="col-span-12 sm:col-span-6 md:col-span-3">
         <div class="form-control">
           <select
-            v-model="cond.op"
+            v-model="cond.type"
             name="cond"
             class="select select-sm"
             @change="selectCond"
@@ -70,11 +70,11 @@ function selectCond() {
           </select>
         </div>
       </div>
-      <template v-if="cond.op === OP.NoPause">
-        <div class="hidden sm:block sm:col-span-12 sm:col-span-6 md:col-span-3" />
+      <template v-if="cond.type === OP.NoPause">
+        <div class="hidden sm:block col-span-12 sm:col-span-6 md:col-span-3" />
       </template>
-      <template v-else-if="isConcreteCond(cond.op)">
-        <div v-if="cond.op === OP.ModeEq" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+      <template v-else-if="isConcreteCond(cond.type)">
+        <div v-if="cond.type === OP.ModeEq" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
           <select
             v-model="cond.val"
             name="mode"
@@ -89,7 +89,7 @@ function selectCond() {
             </option>
           </select>
         </div>
-        <div v-else-if="cond.op === OP.Extends" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
+        <div v-else-if="cond.type === OP.Extends" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
           <select
             v-model="cond.val"
             name="mode"
@@ -99,12 +99,12 @@ function selectCond() {
             <option disabled value="">
               select
             </option>
-            <option v-for="ach in $enum(Achievement).getValues()" :key="ach" :value="ach">
-              {{ Achievement[ach] }}
+            <option v-for="ach in $enum(Requirement).getValues()" :key="ach" :value="ach">
+              {{ Requirement[ach] }}
             </option>
           </select>
         </div>
-        <div v-else-if="cond.op === OP.WithStableMod" class="grid grid-cols-12 col-span-12 gap-0 gap-x-6">
+        <div v-else-if="cond.type === OP.WithStableMod" class="grid grid-cols-12 col-span-12 gap-0 gap-x-6">
           <div v-for="mod in $enum(StableMod).getValues()" :key="mod" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
             <label class="cursor-pointer label">
               <span class="label-text">{{ StableMod[mod] }}</span>
@@ -116,22 +116,22 @@ function selectCond() {
         <input
           v-else
           v-model="cond.val"
-          :type="(cond.op === OP.AccGte || cond.op === OP.ScoreGte) ? 'number' : 'text'"
+          :type="(cond.type === OP.AccGte || cond.type === OP.ScoreGte) ? 'number' : 'text'"
           class="col-span-12 sm:col-span-6 md:col-span-3 input input-sm"
           :class="{
-            'col-span-12 md:col-span-9': cond.op !== OP.AccGte && cond.op !== OP.ScoreGte,
+            'col-span-12 md:col-span-9': cond.type !== OP.AccGte && cond.type !== OP.ScoreGte,
           }"
         >
       </template>
       <template v-else>
-        <div v-if="cond.op !== undefined" class="grid grid-cols-12 col-span-12 gap-2 ">
-          <div v-if="cond.op === OP.Remark" class="w-full col-span-12">
+        <div v-if="cond.type !== undefined" class="grid grid-cols-12 col-span-12 gap-2 ">
+          <div v-if="cond.type === OP.Remark" class="w-full col-span-12">
             <label for="remark" class="label">Remark:</label>
             <input name="remark" type="text" class="input input-sm input-info">
           </div>
-          <app-dan-cond v-if="cond.op === OP.Remark || cond.op === OP.NOT" v-model="cond.cond" @delete="cond = undefined" />
+          <app-dan-cond v-if="cond.type === OP.Remark || cond.type === OP.NOT" v-model="cond.cond" @delete="cond = undefined" />
           <draggable
-            v-else-if="cond.op === OP.AND || cond.op === OP.OR" v-model="cond.cond"
+            v-else-if="cond.type === OP.AND || cond.type === OP.OR" v-model="cond.cond as unknown[]"
             class="grid grid-cols-12 col-span-12 space-y-2"
             v-bind="{
               animation: 200,
@@ -163,7 +163,7 @@ function selectCond() {
     </template>
     <template v-else>
       <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
-        <button class=" btn btn-sm" @click="cond = {}">
+        <button class=" btn btn-sm" @click="cond = {} as any">
           init
         </button>
       </div>
