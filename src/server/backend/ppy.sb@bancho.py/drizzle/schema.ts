@@ -66,7 +66,7 @@ export const scoresSuspicion = mysqlTable('scores_suspicion', {
   reason: varchar('reason', { length: 128 }).notNull(),
   isChecked: boolean('is_checked').notNull(),
   detail: json('detail').notNull(),
-  suspicionTime: datetime('suspicion_time', { mode: 'string' }).notNull(),
+  createdAt: datetime('created_at', { mode: 'string' }).notNull(),
 },
 (table) => {
   return {
