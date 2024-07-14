@@ -17,8 +17,8 @@ export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<R
     sources: typeof schema.sources
   }
 ): SQL {
-  const { type: op } = cond
-  switch (op) {
+  const { type } = cond
+  switch (type) {
     case OP.BeatmapMd5Eq: {
       const { val } = cond
       return eq(table.beatmaps.md5, val)
@@ -71,9 +71,12 @@ export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<R
         ?? raiseError(
           `extending achievement (${Requirement[val]}) not found`
         )
+      if (_cond === cond) {
+        raiseError('loop detected')
+      }
       return danSQLChunks(_cond, achievements, table)
     }
     default:
-      assertNotReachable(op)
+      assertNotReachable(type)
   }
 }
