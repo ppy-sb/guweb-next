@@ -1,6 +1,7 @@
 export { AdminProvider } from './admin'
 export { ArticleProvider } from './article'
 export { ClanProvider } from './clan'
+export { DanProvider } from './dan'
 export { FileProvider } from './file'
 export { MailProvider } from './mail'
 export { MailTokenProvider } from './mail-token'
