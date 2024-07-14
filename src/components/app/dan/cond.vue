@@ -10,7 +10,7 @@ import {
 } from '~/def/dan'
 import { modes } from '~/def'
 
-withDefaults(defineProps<{ listMode?: boolean }>(), { listMode: false })
+withDefaults(defineProps<{ listMode?: boolean; disabled: boolean }>(), { listMode: false, disabled: false })
 
 const emit = defineEmits<{
   (e: 'delete'): void
@@ -57,6 +57,7 @@ function selectCond() {
         <div class="form-control">
           <select
             v-model="cond.type"
+            :disabled="disabled"
             name="cond"
             class="select select-sm"
             @change="selectCond"
@@ -77,6 +78,7 @@ function selectCond() {
         <div v-if="cond.type === OP.ModeEq" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
           <select
             v-model="cond.val"
+            :disabled="disabled"
             name="mode"
             class="select select-sm"
             @change="selectCond"
@@ -92,6 +94,7 @@ function selectCond() {
         <div v-else-if="cond.type === OP.Extends" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
           <select
             v-model="cond.val"
+            :disabled="disabled"
             name="mode"
             class="select select-sm"
             @change="selectCond"
@@ -108,7 +111,7 @@ function selectCond() {
           <div v-for="mod in $enum(StableMod).getValues()" :key="mod" class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
             <label class="cursor-pointer label">
               <span class="label-text">{{ StableMod[mod] }}</span>
-              <input type="checkbox" :checked="!!((cond.val as number) & mod)" class="checkbox" @change="(cond.val = (cond.val as number) ^ mod)">
+              <input :disabled="disabled" type="checkbox" :checked="!!((cond.val as number) & mod)" class="checkbox" @change="(cond.val = (cond.val as number) ^ mod)">
             </label>
           </div>
         </div>
@@ -116,6 +119,7 @@ function selectCond() {
         <input
           v-else
           v-model="cond.val"
+          :disabled="disabled"
           :type="(cond.type === OP.AccGte || cond.type === OP.ScoreGte) ? 'number' : 'text'"
           class="col-span-12 sm:col-span-6 md:col-span-3 input input-sm"
           :class="{
@@ -127,7 +131,7 @@ function selectCond() {
         <div v-if="cond.type !== undefined" class="grid grid-cols-12 col-span-12 gap-2 ">
           <div v-if="cond.type === OP.Remark" class="w-full col-span-12">
             <label for="remark" class="label">Remark:</label>
-            <input name="remark" type="text" class="input input-sm input-info">
+            <input :disabled="disabled" name="remark" type="text" class="input input-sm input-info">
           </div>
           <app-dan-cond v-if="cond.type === OP.Remark || cond.type === OP.NOT" v-model="cond.cond" @delete="cond = undefined" />
           <draggable
@@ -154,21 +158,21 @@ function selectCond() {
           </draggable>
         </div>
       </template>
-      <button class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-sm btn-secondary" @click="cond = undefined">
+      <button :disabled="disabled" class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-sm btn-secondary" @click="cond = undefined">
         reset
       </button>
-      <button v-if="listMode" class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-sm btn-warning" @click="emit('delete')">
+      <button v-if="listMode" :disabled="disabled" class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-sm btn-warning" @click="emit('delete')">
         delete
       </button>
     </template>
     <template v-else>
       <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
-        <button class=" btn btn-sm" @click="cond = {} as any">
+        <button :disabled="disabled" class=" btn btn-sm" @click="cond = {} as any">
           init
         </button>
       </div>
       <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
-        <button v-if="listMode" class="btn btn-sm btn-warning" @click="emit('delete')">
+        <button v-if="listMode" :disabled="disabled" class="btn btn-sm btn-warning" @click="emit('delete')">
           delete
         </button>
       </div>
