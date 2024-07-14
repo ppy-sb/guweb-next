@@ -16,6 +16,7 @@ import {
 
 export { ChatProvider } from './chat'
 export { UserProvider } from './user'
+export { DanProvider } from './dan'
 
 export class AdminProvider extends BAdminProvider {}
 export class ArticleProvider extends BArticleProvider {}

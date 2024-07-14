@@ -55,29 +55,6 @@ export abstract class ScoreProvider<TScoreId, TId> extends Mixin(IdTransformable
   abstract findOne(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>>
   abstract findMany(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>[]>
 
-  abstract runCustomDan(opt: Dan): Promise<Array<{
-    requirement: Requirement
-    cond: Cond
-    results: {
-      player: {
-        id: TId
-        name: string
-      }
-      score: {
-        id: TScoreId
-        accuracy: number
-        score: number
-      }
-      beatmap: {
-        id: TId
-        md5: string
-        artist: string
-        title: string
-        version: string
-      }
-    }[]
-  }>>
-
   // abstract recents(opt: ClanProvider.RecentScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>
   // abstract tops(opt: ClanProvider.TopScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>
   // abstract bests(opt: ClanProvider.BestScoresParam<Id, M extends Mode, R extends AvailableRuleset<M>, RS extends LeaderboardRankingSystem>): Promise<ScoreP<Id, Mode, R, RS>[]>
