@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
 import { validateUsecase } from '~/common/utils/dan'
-import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
+import { type Dan, type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
 
 type RouterOutput = inferRouterOutputs<AppRouter>
 const requirements = [Requirement.Pass, Requirement.NoPause]
 const typeAC = [Requirement.Pass, Requirement.NoPause]
 const app = useNuxtApp()
+const route = useRoute()
+
+const qId = route.query.id?.toString()
+
 const defaultValue: DatabaseDan<string> & { _db: boolean } = {
   id: '',
   name: '',
@@ -16,7 +20,7 @@ const defaultValue: DatabaseDan<string> & { _db: boolean } = {
   _db: false,
 }
 
-const compose = ref<typeof defaultValue>(structuredClone(defaultValue))
+const compose = ref<typeof defaultValue>(qId ? await _getDB(qId) : structuredClone(defaultValue))
 
 const data = ref<RouterOutput['dan']['userRule']>()
 const loading = ref(false)
@@ -34,7 +38,7 @@ function loadLast() {
 }
 
 function copy() {
-  navigator?.clipboard.writeText(JSON.stringify(compose))
+  navigator?.clipboard.writeText(JSON.stringify(compose.value))
 }
 
 async function readClipboard() {
@@ -42,19 +46,23 @@ async function readClipboard() {
   if (!text) {
     return
   }
-  compose.value = validateUsecase(JSON.parse(text))
+  compose.value = unDB(JSON.parse(text))
 }
 
 async function getDB() {
   loading.value = true
   try {
-    compose.value = {
-      ...await app.$client.dan.get.query(compose.value.id),
-      _db: true,
-    }
+    compose.value = await _getDB(compose.value.id)
   }
   finally {
     loading.value = false
+  }
+}
+
+async function _getDB(id: string) {
+  return {
+    ...await app.$client.dan.get.query(id),
+    _db: true,
   }
 }
 
@@ -81,6 +89,19 @@ async function deleteDB() {
   await app.$client.dan.delete.mutate(compose.value.id)
   reset()
 }
+async function duplicate() {
+  compose.value = unDB(compose.value)
+}
+
+function unDB<T extends DatabaseDan<string>>(val: T): T {
+  val = validateUsecase(val)
+  ;(val as any)._db = false
+  val.id = ''
+  val.requirements.forEach((r) => {
+    r.id = ''
+  })
+  return val
+}
 </script>
 
 <template>
@@ -95,7 +116,7 @@ async function deleteDB() {
       </div>
       <div class="col-span-12 sm:col-span-6 md:col-span-3 form-control">
         <label for="name" class="label">ID</label>
-        <input id="name" v-model="compose.id" class="input" type="text" name="name" @change="getDB">
+        <input id="name" v-model="compose.id" disabled class="input" type="text" name="name" @change="getDB">
       </div>
       <div class="col-span-12 form-control">
         <label for="description" class="label">Description</label>
@@ -181,6 +202,12 @@ async function deleteDB() {
         class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-error" :disabled="!compose._db" @click="deleteDB"
       >
         delete
+        <i v-if="loading" class="loading" />
+      </button>
+      <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-error" :disabled="!compose._db" @click="duplicate"
+      >
+        duplicate
         <i v-if="loading" class="loading" />
       </button>
     </div>
