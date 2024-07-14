@@ -47,6 +47,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       description: i.description ?? '',
       requirements: i.requirements.map(i => ({
         ...i,
+        id: i.cond.id,
         type: i.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
         cond: i.cond.cond as Cond,
       })),
@@ -87,6 +88,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         description: i.description ?? '',
         requirements: i.requirements.map(i => ({
           ...i,
+          id: i.cond.id,
           type: i.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
           cond: i.cond.cond as Cond,
         })),
@@ -245,20 +247,24 @@ export class DanProvider extends Base<Id, ScoreId> {
             },
           })
 
-        if (!res.insertId) {
+        const rid = (r as DatabaseRequirementCondBinding<Id, Requirement, Cond>).id ?? res.insertId
+
+        if (!rid) {
           throw new Error(`Failed to save cond: ${JSON.stringify(r.cond)}`)
         }
 
         await tx.insert(schema.requirementCondBindings)
           .values({
             danId: id,
-            condId: res.insertId,
+            condId: rid,
             type: r.type === Requirement.NoPause ? 'no-pause' : 'pass',
           })
       }
       await this.removeDangling(tx)
 
       return await this.get(id, tx)
+    }).catch((e) => {
+      console.error(e)
     })
   }
 

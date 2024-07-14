@@ -77,9 +77,9 @@ function fmtDetail(
 
 export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { value: infer V } ? V : undefined) {
   const { cond } = detail
-  const { type: op } = cond
+  const { type } = cond
 
-  switch (op) {
+  switch (type) {
     case OP.BanchoBeatmapIdEq:
     case OP.BeatmapMd5Eq:
     case OP.AccGte:
@@ -87,7 +87,7 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
     case OP.ModeEq:
     {
       const { val } = cond
-      return `${OP[op]} ${val}, ${value}`
+      return `${OP[type]} ${val}, ${value}`
     }
 
     case OP.Remark:
@@ -99,29 +99,29 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
     case OP.WithStableMod:
     {
       const { val } = cond
-      return `${OP[op]} ${StableMod[val]}`
+      return `${OP[type]} ${StableMod[val]}`
     }
 
     // op without attribute
     case OP.NoPause:
-      return `${OP[op]}`
+      return `${OP[type]}`
 
     // referenced op
     case OP.Extends:
     {
       const { val } = cond
-      return `${OP[op]} Achievement(${Requirement[val]})`
+      return `${OP[type]} Achievement(${Requirement[val]})`
     }
 
     // deep op
     case OP.AND:
     case OP.OR:
     case OP.NOT:
-      return `${OP[op]}`
+      return `${OP[type]}`
 
     default:
       // return '???'
-      assertNotReachable(op)
+      assertNotReachable(type)
   }
 }
 
@@ -154,8 +154,8 @@ export function run_cond<C extends Cond, AB extends RequirementCondBinding<Requi
   score: ValidatingScore,
   results: DetailResult<AB['cond'], AB>[] = []
 ): DetailResult<C, AB> {
-  const { type: op } = cond
-  switch (op) {
+  const { type } = cond
+  switch (type) {
     case OP.BeatmapMd5Eq: {
       const { val } = cond
       return {
@@ -282,7 +282,7 @@ export function run_cond<C extends Cond, AB extends RequirementCondBinding<Requi
       } as unknown as DetailResult<C, AB>
     }
     default:
-      assertNotReachable(op)
+      assertNotReachable(type)
   }
 }
 
@@ -361,7 +361,7 @@ export function validateCond<T extends Cond>(cond: T): T {
 
     case OP.OR:
     case OP.AND:
-      return { op: cond.type, cond: cond.cond.filter(Boolean).map(validateCond) } as unknown as T
+      return { type: cond.type, cond: cond.cond.filter(Boolean).map(validateCond) } as unknown as T
 
     default: assertNotReachable(cond)
   }
