@@ -4,6 +4,7 @@ import { router } from '../trpc'
 import { router as admin } from './admin'
 import { router as article } from './article'
 import { router as clan } from './clan'
+import { router as dan } from './dan'
 import { router as mail } from './mail'
 import { router as map } from './map'
 import { router as me } from './me'
@@ -29,6 +30,8 @@ export const appRouter = router({
   score,
   status,
   mail,
+
+  dan,
 })
 
 // export type definition of API
