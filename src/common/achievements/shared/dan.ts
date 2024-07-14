@@ -1,6 +1,6 @@
-import { $accGte, $achievement, $and, $beatmapMd5Eq, $extendsAchievement, $modeEq, $noPause, $not, $remark, $usecase, $withStableMod } from '~/common/utils/dan'
+import { $accGte, $and, $extendsAchievement, $modeEq, $noPause, $not, $remark, $requirement, $withStableMod } from '~/common/utils/dan'
 import { Mode } from '~/def'
-import { Achievement } from '~/def/dan'
+import { Requirement } from '~/def/dan'
 import { StableMod } from '~/def/score'
 
 export const _4kDanCommon = $remark(
@@ -26,10 +26,10 @@ export const _4kDanCommon = $remark(
   ),
 )
 
-export const nonStop = $achievement(
-  Achievement.NoPause,
+export const nonStop = $requirement(
+  Requirement.NoPause,
   $and(
-    $extendsAchievement(Achievement.Pass),
+    $extendsAchievement(Requirement.Pass),
     $noPause()
   )
 )
