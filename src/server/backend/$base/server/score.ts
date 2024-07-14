@@ -4,7 +4,7 @@ import { IdTransformable, ScoreIdTransformable } from './@extends'
 import type { ActiveMode, ActiveRuleset, LeaderboardRankingSystem, PPRankingSystem } from '~/def/common'
 import type { RulesetScore } from '~/def/score'
 import type { UserCompact } from '~/def/user'
-import { type Achievement, type Cond, type Usecase } from '~/def/dan'
+import { type Cond, type Dan, type Requirement } from '~/def/dan'
 
 export namespace ScoreProvider {
 
@@ -55,8 +55,8 @@ export abstract class ScoreProvider<TScoreId, TId> extends Mixin(IdTransformable
   abstract findOne(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>>
   abstract findMany(opt: ScoreProvider.SearchQuery<TId>): Promise<ScoreProvider.ScoreWithUser<TScoreId, TId>[]>
 
-  abstract runCustomAchievement(opt: Usecase): Promise<Array<{
-    achievement: Achievement
+  abstract runCustomDan(opt: Dan): Promise<Array<{
+    requirement: Requirement
     cond: Cond
     results: {
       player: {
