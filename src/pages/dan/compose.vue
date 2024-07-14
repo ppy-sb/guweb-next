@@ -1,23 +1,24 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
 import { validateUsecase } from '~/common/utils/dan'
-import { Achievement, type AchievementBinding, type Usecase } from '~/def/dan'
+import { type Dan, type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
 
+// eslint-disable-next-line n/prefer-global/process
 const navigator = process.server ? undefined : window.navigator
 
 type RouterOutput = inferRouterOutputs<AppRouter>
-const achievements = [Achievement.Pass, Achievement.NoPause]
-const typeAC = [Achievement.Pass, Achievement.NoPause]
+const requirements = [Requirement.Pass, Requirement.NoPause]
+const typeAC = [Requirement.Pass, Requirement.NoPause]
 const app = useNuxtApp()
-const defaultValue = {
-  id: 0,
+const defaultValue: DatabaseDan<string> = {
+  id: '0',
   name: '',
   description: '',
-  achievements: [],
+  requirements: [],
 }
 
-const compose = ref<Usecase>(defaultValue)
+const compose = ref<typeof defaultValue>(defaultValue)
 
 const data = ref<RouterOutput['score']['dan']['userRule']>()
 const loading = ref(false)
@@ -59,7 +60,7 @@ async function readClipboard() {
 <template>
   <section class="container max-w-screen-lg mx-auto">
     <h1 class="text-2xl">
-      Compose achievements
+      Compose requirements
     </h1>
     <div class="grid grid-flow-row grid-cols-12 gap-4">
       <div class="col-span-12 md:col-span-9 form-control">
@@ -75,13 +76,13 @@ async function readClipboard() {
         <textarea id="description" v-model="compose.description" class="textarea" />
       </div>
       <div
-        v-for="ach, i in compose.achievements"
+        v-for="ach, i in compose.requirements"
         :key="i"
         class="grid grid-cols-12 col-span-12 gap-0 p-2 border border-base-300 rounded-2xl bg-base-100 "
       >
         <div class="col-span-12 md:col-span-6 form-control">
-          <label for="ach-type" class="label">Achievement</label>
-          <select id="ach-type" v-model="ach.achievement" class="select select-sm">
+          <label for="ach-type" class="label">requirement</label>
+          <select id="ach-type" v-model="ach.type" class="select select-sm">
             <option value="">
               select
             </option>
@@ -89,10 +90,10 @@ async function readClipboard() {
               v-for="ac in typeAC"
               :key="ac"
               :value="ac"
-              :selected="ac === ach.achievement"
-              :disabled="!!compose.achievements.find(i => i.achievement === ac)"
+              :selected="ac === ach.type"
+              :disabled="!!compose.requirements.find(i => i.type === ac)"
             >
-              {{ Achievement[ac] }}
+              {{ Requirement[ac] }}
             </option>
           </select>
         </div>
@@ -101,22 +102,22 @@ async function readClipboard() {
           <app-dan-cond
             v-model="ach.cond"
             :list-mode="true"
-            @delete="(compose.achievements as any[]).splice(i, 1)"
+            @delete="(compose.requirements as any[]).splice(i, 1)"
           />
         </div>
       </div>
       <button
         class="col-span-12 btn"
-        :disabled="achievements.every(ach => !!compose.achievements.find(i => i.achievement === ach)) || compose.achievements.length >= achievements.length"
+        :disabled="requirements.every(ach => !!compose.requirements.find(i => i.type === ach)) || compose.requirements.length >= requirements.length"
         @click="
-          (compose.achievements as unknown as AchievementBinding<any, any>[])
+          (compose.requirements as unknown as RequirementCondBinding<any, any>[])
             .push({
-              achievement: undefined,
+              type: undefined,
               cond: undefined,
             })
         "
       >
-        add achievement
+        add requirement
       </button>
       <button
         class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="reset"
@@ -146,7 +147,7 @@ async function readClipboard() {
         class="table table-zebra caption-top"
       >
         <caption class="py-2 bg-base-200">
-          {{ Achievement[ach.achievement] }}
+          {{ Requirement[ach.requirement] }}
         </caption>
         <thead>
           <tr>
