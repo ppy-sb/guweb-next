@@ -1,16 +1,16 @@
 import { BeatmapSource } from '~/def/beatmap'
 import {
-  Achievement,
-  type AchievementBinding,
-  type AchievementResult,
-  type BaseCond,
-
-  type ConcreteCondBase,
+  type ConcreteCond,
   type Cond,
+  type CondBase,
+  type Dan,
+
   type DetailResult,
   OP,
   type Remarked,
-  type Usecase,
+  Requirement,
+  type RequirementCondBinding,
+  type RequirementResult,
   type ValidatingScore,
   type WrappedCond,
 } from '~/def/dan'
@@ -18,8 +18,8 @@ import { StableMod } from '~/def/score'
 import type { Mode } from '~/def'
 
 export function pretty_result(
-  res: AchievementResult[],
-  usecase: Usecase,
+  res: RequirementResult[],
+  usecase: Dan,
   score: ValidatingScore
 ) {
   const msg: string[] = []
@@ -44,20 +44,20 @@ function b(_b: boolean) {
 }
 
 function fmtDetail(
-  detail: AchievementResult | DetailResult<Cond>,
+  detail: RequirementResult | DetailResult<Cond>,
   indent: number = 0
 ) {
   let msg: string[] = []
 
-  if ('achievement' in detail) {
-    msg.push(`${sp(indent)}Achievement(${Achievement[detail.achievement]}):`)
+  if ('type' in detail) {
+    msg.push(`${sp(indent)}Achievement(${Requirement[detail.type]}):`)
     indent += 1
   }
   if ('cond' in detail) {
     msg.push(
       `${sp(indent)}${b(detail.result)} ${fmt_cond(detail, 'value' in detail ? detail.value : undefined)}`
     )
-    if (detail.cond.op === OP.Extends) {
+    if (detail.cond.type === OP.Extends) {
       return msg
     }
     indent += 1
@@ -77,7 +77,7 @@ function fmtDetail(
 
 export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { value: infer V } ? V : undefined) {
   const { cond } = detail
-  const { op } = cond
+  const { type: op } = cond
 
   switch (op) {
     case OP.BanchoBeatmapIdEq:
@@ -110,7 +110,7 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
     case OP.Extends:
     {
       const { val } = cond
-      return `${OP[op]} Achievement(${Achievement[val]})`
+      return `${OP[op]} Achievement(${Requirement[val]})`
     }
 
     // deep op
@@ -125,16 +125,16 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
   }
 }
 
-export function run_usecase<AB extends AchievementBinding<Achievement, Cond>>(
-  usecase: Usecase<AB>,
+export function run_usecase<AB extends RequirementCondBinding<Requirement, Cond>>(
+  usecase: Dan<AB>,
   score: ValidatingScore
-): AchievementResult<AB>[] {
-  const check_result: AchievementResult<AB>[] = []
+): RequirementResult<AB>[] {
+  const check_result: RequirementResult<AB>[] = []
   const caches: DetailResult<AB['cond'], AB>[] = []
-  for (const { achievement, cond: check_cond } of usecase.achievements) {
+  for (const { type: achievement, cond: check_cond } of usecase.requirements) {
     const r = run_cond<AB['cond'], AB>(
       check_cond,
-      usecase.achievements,
+      usecase.requirements,
       score,
       caches
     )
@@ -148,13 +148,13 @@ export function run_usecase<AB extends AchievementBinding<Achievement, Cond>>(
   return check_result
 }
 
-export function run_cond<C extends Cond, AB extends AchievementBinding<Achievement, Cond>>(
+export function run_cond<C extends Cond, AB extends RequirementCondBinding<Requirement, Cond>>(
   cond: C,
   achievements: readonly AB[],
   score: ValidatingScore,
   results: DetailResult<AB['cond'], AB>[] = []
 ): DetailResult<C, AB> {
-  const { op } = cond
+  const { type: op } = cond
   switch (op) {
     case OP.BeatmapMd5Eq: {
       const { val } = cond
@@ -261,10 +261,10 @@ export function run_cond<C extends Cond, AB extends AchievementBinding<Achieveme
       const { val } = cond
       const _cond
         = achievements.find(
-          ({ achievement }) => achievement === val
+          ({ type: achievement }) => achievement === val
         )?.cond
         ?? raiseError(
-          `extending achievement (${Achievement[val]}) not found`
+          `extending achievement (${Requirement[val]}) not found`
         )
       const cached = results.find(i => i.cond === _cond)
       if (cached) {
@@ -286,62 +286,62 @@ export function run_cond<C extends Cond, AB extends AchievementBinding<Achieveme
   }
 }
 
-export function $usecase<AB extends AchievementBinding<Achievement, Cond>>(name: string, opts: { id: number; description: string; achievements: readonly AB[] }): Usecase<AB> {
+export function $dan<AB extends RequirementCondBinding<Requirement, Cond>>(name: string, opts: { id: number; description: string; requirements: readonly AB[] }): Dan<AB> {
   return { name, ...opts }
 }
-export function $achievement<A extends Achievement, C extends Cond>(achievement: A, cond: C): AchievementBinding<A, C> {
-  return { achievement, cond }
+export function $requirement<A extends Requirement, C extends Cond>(achievement: A, cond: C): RequirementCondBinding<A, C> {
+  return { type: achievement, cond }
 }
 
 export function $remark<C>(value: string, cond: C): Remarked<OP.Remark, C> {
-  return { op: OP.Remark, remark: value, cond }
+  return { type: OP.Remark, remark: value, cond }
 }
 
 export function $or<C extends Cond[]>(...cond: C): WrappedCond<OP.OR, C> {
-  return { op: OP.OR, cond }
+  return { type: OP.OR, cond }
 }
 
 export function $and<C extends Cond[]>(...cond: C): WrappedCond<OP.AND, C> {
-  return { op: OP.AND, cond }
+  return { type: OP.AND, cond }
 }
 
 export function $not<C extends Cond>(cond: C): WrappedCond<OP.NOT, C> {
-  return { op: OP.NOT, cond }
+  return { type: OP.NOT, cond }
 }
-export function $modeEq<C extends Mode>(val: C): ConcreteCondBase<OP.ModeEq, C> {
-  return { op: OP.ModeEq, val }
-}
-
-export function $extendsAchievement<C extends Achievement>(val: C): ConcreteCondBase<OP.Extends, C> {
-  return { op: OP.Extends, val }
+export function $modeEq<C extends Mode>(val: C): ConcreteCond<OP.ModeEq, C> {
+  return { type: OP.ModeEq, val }
 }
 
-export function $banchoBeatmapIdEq<C>(val: C): ConcreteCondBase<OP.BanchoBeatmapIdEq, C> {
-  return { op: OP.BanchoBeatmapIdEq, val }
+export function $extendsAchievement<C extends Requirement>(val: C): ConcreteCond<OP.Extends, C> {
+  return { type: OP.Extends, val }
 }
 
-export function $beatmapMd5Eq<C>(val: C): ConcreteCondBase<OP.BeatmapMd5Eq, C> {
-  return { op: OP.BeatmapMd5Eq, val }
+export function $banchoBeatmapIdEq<C>(val: C): ConcreteCond<OP.BanchoBeatmapIdEq, C> {
+  return { type: OP.BanchoBeatmapIdEq, val }
 }
 
-export function $noPause(): BaseCond<OP.NoPause> {
-  return { op: OP.NoPause }
+export function $beatmapMd5Eq<C>(val: C): ConcreteCond<OP.BeatmapMd5Eq, C> {
+  return { type: OP.BeatmapMd5Eq, val }
 }
 
-export function $accGte<C>(val: C): ConcreteCondBase<OP.AccGte, C> {
-  return { op: OP.AccGte, val }
+export function $noPause(): CondBase<OP.NoPause> {
+  return { type: OP.NoPause }
 }
 
-export function $scoreGte<C>(val: C): ConcreteCondBase<OP.ScoreGte, C> {
-  return { op: OP.ScoreGte, val }
+export function $accGte<C>(val: C): ConcreteCond<OP.AccGte, C> {
+  return { type: OP.AccGte, val }
 }
 
-export function $withStableMod<C extends StableMod>(mod: C): ConcreteCondBase<OP.WithStableMod, C> {
-  return { op: OP.WithStableMod, val: mod }
+export function $scoreGte<C>(val: C): ConcreteCond<OP.ScoreGte, C> {
+  return { type: OP.ScoreGte, val }
+}
+
+export function $withStableMod<C extends StableMod>(mod: C): ConcreteCond<OP.WithStableMod, C> {
+  return { type: OP.WithStableMod, val: mod }
 }
 
 export function validateCond<T extends Cond>(cond: T): T {
-  switch (cond.op) {
+  switch (cond.type) {
     case OP.BanchoBeatmapIdEq:
     case OP.BeatmapMd5Eq:
     case OP.AccGte:
@@ -349,28 +349,28 @@ export function validateCond<T extends Cond>(cond: T): T {
     case OP.ModeEq:
     case OP.WithStableMod:
     case OP.Extends:
-      return { op: cond.op, val: cond.val } as T
+      return { type: cond.type, val: cond.val } as T
 
     case OP.Remark:
-      return { op: cond.op, remark: cond.remark, cond: validateCond(cond.cond) } as T
+      return { type: cond.type, remark: cond.remark, cond: validateCond(cond.cond) } as T
 
     case OP.NoPause:
-      return { op: cond.op } as T
+      return { type: cond.type } as T
     case OP.NOT:
-      return { op: cond.op, cond: validateCond(cond.cond) } as T
+      return { type: cond.type, cond: validateCond(cond.cond) } as T
 
     case OP.OR:
     case OP.AND:
-      return { op: cond.op, cond: cond.cond.filter(Boolean).map(validateCond) } as unknown as T
+      return { op: cond.type, cond: cond.cond.filter(Boolean).map(validateCond) } as unknown as T
 
     default: assertNotReachable(cond)
   }
 }
 
-export function validateUsecase<U extends Usecase>(compose: U): U {
+export function validateUsecase<U extends Dan>(compose: U): U {
   return {
     ...compose,
-    achievements: compose.achievements.map(i => ({
+    requirements: compose.requirements.map(i => ({
       ...i,
       cond: validateCond(i.cond),
     })),

@@ -1,26 +1,26 @@
 import {
   $accGte,
-  $achievement,
   $and,
   $beatmapMd5Eq,
+  $dan,
   $extendsAchievement,
   $modeEq,
   $noPause,
   $not,
   $remark,
-  $usecase,
+  $requirement,
   $withStableMod,
 } from '~/common/utils/dan'
 import { Mode } from '~/def'
-import { Achievement } from '~/def/dan'
+import { Requirement } from '~/def/dan'
 import { StableMod } from '~/def/score'
 
-export default $usecase('Dan ~ REFORM ~ 1st Pack', {
+export default $dan('Dan ~ REFORM ~ 1st Pack', {
   id: -1,
   description: '6th dan',
-  achievements: [
-    $achievement(
-      Achievement.Pass,
+  requirements: [
+    $requirement(
+      Requirement.Pass,
       $and(
         $remark(
           '~ 6th ~ (Marathon)',
@@ -52,9 +52,9 @@ export default $usecase('Dan ~ REFORM ~ 1st Pack', {
     ),
 
     // you can use nonStop in ./shared/dan
-    $achievement(
-      Achievement.NoPause,
-      $and($extendsAchievement(Achievement.Pass), $noPause())
+    $requirement(
+      Requirement.NoPause,
+      $and($extendsAchievement(Requirement.Pass), $noPause())
     ),
   ],
 })
