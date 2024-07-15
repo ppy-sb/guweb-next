@@ -10,7 +10,11 @@ import { StableMod } from '~/def/score'
 import * as icon from '~/common/icon'
 
 withDefaults(defineProps<{ listMode?: boolean; cond: Cond }>(), { listMode: false })
-const disabled = true
+const fmtScore = createScoreFormatter()
+
+const { t } = useI18n()
+const dan = localeKey.root.dan
+const $cond = dan.cond
 
 const inline = [
   OP.AccGte,
@@ -30,49 +34,72 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
 
 <template>
   <template v-if="isConcreteCond(cond.type)">
-    <span v-if="cond.type === OP.NoPause" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      No Pause
+    <span v-if="cond.type === OP.NoPause" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      {{ t($cond[cond.type].__path__) }}
     </span>
-    <span v-else-if="cond.type === OP.ModeEq" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      Mode = <img
-        :alt="cond.val"
-        :src="`/icons/mode/${icon.mode[cond.val].icon}.svg`"
-        class="color-theme-light-invert w-4 h-4 inline mx-1"
-      ><span class="font-bold">{{ cond.val }}</span>
-    </span>
-    <span v-else-if="cond.type === OP.Extends" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      Satisfies all requirements in <span class="font-bold">{{ Requirement[cond.val] }}</span>
-    </span>
-    <span v-else-if="cond.type === OP.AccGte" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      Accuracy ≥ <span class="font-bold">{{ cond.val }}%</span>
-    </span>
-    <span v-else-if="cond.type === OP.ScoreGte" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      Score ≥ <span class="font-bold">{{ cond.val }}%</span>
-    </span>
-    <span v-else-if="cond.type === OP.BanchoBeatmapIdEq" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      Beatmap ID = <a :href="`/b/${cond.val}`" class="link">{{ cond.val }}</a> in Bancho
-    </span>
-    <span v-else-if="cond.type === OP.BeatmapMd5Eq" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded">
-      Beatmap MD5 = <a :href="`/b/${cond.val}`" class="link">{{ cond.val }}</a>
-    </span>
-    <span v-else-if="cond.type === OP.WithStableMod" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content leading-loose px-1 rounded space-x-3">
-      <span>Played with</span>
-      <template v-for="mod in $enum(StableMod).getValues()" :key="mod">
-        <span v-if="((cond.val as number) & mod)" class="font-bold">
-          {{ StableMod[mod] }}
-        </span>
+
+    <i18n-t v-else-if="cond.type === OP.ModeEq" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      <template #val>
+        <img
+          :alt="cond.val"
+          :src="`/icons/mode/${icon.mode[cond.val].icon}.svg`"
+          class="color-theme-light-invert w-4 h-4 align-middle mb-1 inline mx-1"
+        >
+        <span class="font-bold">{{ cond.val }}</span>
       </template>
-      <span>mod</span>
-    </span>
+    </i18n-t>
+
+    <i18n-t v-else-if="cond.type === OP.Extends" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      <template #val>
+        <span class="font-bold">{{ Requirement[cond.val] }}</span>
+      </template>
+    </i18n-t>
+
+    <i18n-t v-else-if="cond.type === OP.AccGte" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      <template #val>
+        <span class="font-bold">{{ cond.val }}%</span>
+      </template>
+    </i18n-t>
+
+    <i18n-t v-else-if="cond.type === OP.ScoreGte" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      <template #val>
+        <span class="font-bold">{{ fmtScore(cond.val) }}</span>
+      </template>
+    </i18n-t>
+
+    <i18n-t v-else-if="cond.type === OP.BanchoBeatmapIdEq" :keypath="$cond[cond.type].__path__" tag="span" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      <template #val>
+        <a :href="`/b/${cond.val}`" class="link">{{ cond.val }}</a>
+      </template>
+    </i18n-t>
+
+    <i18n-t v-else-if="cond.type === OP.BeatmapMd5Eq" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
+      <template #val>
+        <a :href="`/b/${cond.val}`" class="link">{{ cond.val }}</a>
+      </template>
+    </i18n-t>
+
+    <i18n-t v-else-if="cond.type === OP.WithStableMod" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded inline">
+      <template #val>
+        <template v-for="mod in $enum(StableMod).getValues()" :key="mod">
+          <b v-if="((cond.val as number) & mod)">
+            {{ StableMod[mod] }}&nbsp;
+          </b>
+        </template>
+      </template>
+    </i18n-t>
   </template>
   <template v-else>
-    <div v-if="cond.type === OP.Remark">
-      <span>Remark: </span>
-      <span class="font-semibold">{{ cond.remark }}</span>
-      <app-dan-explain-cond :cond="cond.cond" />
-    </div>
+    <i18n-t v-if="cond.type === OP.Remark" :keypath="$cond[cond.type].__path__">
+      <template #remark>
+        <span class="font-semibold">{{ cond.remark }}</span>
+      </template>
+      <template #val>
+        <app-dan-explain-cond :cond="cond.cond" />
+      </template>
+    </i18n-t>
     <span v-else-if="cond.type === OP.NOT">
-      <span class="badge badge-accent bg-accent/40 dark:bg-accent">Not</span>
+      <span class="badge badge-accent bg-accent/40 dark:bg-accent">{{ t(dan.cond[cond.type].__path__) }}</span>
       <span>&nbsp;</span>
       <app-dan-explain-cond :cond="cond.cond" />
     </span>
@@ -80,21 +107,21 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
       v-else-if="cond.type === OP.AND || cond.type === OP.OR"
     >
       <div
-        class="border-l-4 ps-3 inline-block my-1" :class="{
-          'border-neutral': cond.type === OP.AND,
-          'border-accent/30': cond.type === OP.OR,
+        class="border-l-4 inline-block my-1" :class="{
+          'border-neutral ps-3': cond.type === OP.AND,
+          'border-accent/30 bg-accent/5 rounded px-3 py-2': cond.type === OP.OR,
         }"
       >
         <template v-for="_cond, i in cond.cond" :key="i">
           <app-dan-explain-cond :cond="_cond" :list-mode="true" />
           <template v-if="i < cond.cond.length - 1">
-            <br v-if="cond.type === OP.OR">
+            <br v-if="cond.type === OP.OR" class="lg:hidden">
             <span
               :class="{
-                'badge badge-accent bg-accent/40 dark:bg-accent': cond.type === OP.OR,
+                'badge badge-accent bg-accent/40 dark:bg-accent me-1 lg:mx-1': cond.type === OP.OR,
               }"
-            >{{ cond.type === OP.AND ? ',' : ' or ' }}</span>
-            <br>
+            >{{ cond.type === OP.AND ? ',' : `${t($cond[cond.type].__path__)}` }}</span>
+            <br v-if="cond.type === OP.AND">
           </template>
           <span v-else>.</span>
         </template>

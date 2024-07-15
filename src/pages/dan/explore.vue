@@ -16,10 +16,16 @@ const { data, refresh } = await app.$client.dan.search.useQuery(query)
 en-GB:
   search-text: Search Dans...
   search: Search
+  achievement: 'achievement: '
+  detail: Detail
+  qf-scores: Qualified Scores (best 10)
 
 zh-CN:
   search-text: 搜索段位成就...
   search: 搜索
+  achievement: '成就: '
+  detail: 详细
+  qf-scores: 满足条件的成绩 (前 10)
 
 # TODO fr, DE
 </i18n>
@@ -27,7 +33,7 @@ zh-CN:
 <template>
   <section class="container mx-auto custom-container space-y-8">
     <form :action="useRequestURL().href" method="get" @submit.prevent="refresh()">
-      <label for="keyword" class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">Search</label>
+      <label for="keyword" class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">{{ t('search') }}</label>
       <div class="relative">
         <div class="absolute inset-y-0 flex items-center pointer-events-none start-0 ps-3">
           <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
@@ -46,23 +52,23 @@ zh-CN:
       <nuxt-link-locale class="text-3xl link" :to="{ name: 'dan-compose', query: { id: item.id } }">
         {{ item.name }}
       </nuxt-link-locale>
-      <p class="text-lg">
+      <p class="whitespace-pre-wrap">
         {{ item.description }}
       </p>
       <div class="collapse collapse-plus p-0">
         <input type="checkbox">
         <div class="collapse-title ps-0 text-xl font-medium">
-          Detail
+          {{ t('detail') }}
         </div>
-        <div class="collapse-content p-0 m-0 space-y-4">
+        <div class="collapse-content p-0 m-0 space-y-4 leading-relaxed">
           <div v-for="requirement in item.requirements" :key="requirement.id" class="border-l-4 border-secondary ps-3">
             <p class="mb-2">
-              <span>Achievement: </span>
+              <span>{{ t('achievement') }}</span>
               <span class="font-bold">{{ Requirement[requirement.type] }}</span>
             </p>
             <app-dan-explain-cond :cond="requirement.cond" />
             <p class="mb-2">
-              Qualified Scores (best 10):
+              {{ t('qf-scores') }}
             </p>
             <table class="table table-sm table-zebra">
               <thead>

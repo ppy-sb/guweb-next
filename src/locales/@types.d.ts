@@ -1,4 +1,4 @@
-import type { LocaleMessageValue, VueMessageType } from '@nuxtjs/i18n/dist/runtime/composables'
+import type { LocaleMessageValue, LocaleMessages, VueMessageType } from '@nuxtjs/i18n/dist/runtime/composables'
 import type { DeepPartial } from '@trpc/server'
 import type { CountryCode } from '~/def/country-code'
 import type { GucchoError } from '~/def/messages'
@@ -7,6 +7,7 @@ import type { RankingStatus } from '~/def/beatmap'
 import type { Scope, UserRole } from '~/def/user'
 import { Lang, type Rank } from '~/def'
 import type { ActiveMode, ActiveRuleset } from '~/def/common'
+import type { OP, Requirement } from '~/def/dan'
 
 type Title =
 | 'leaderboard'
@@ -71,6 +72,11 @@ export interface GlobalI18n extends PathAccessibleObject {
   service: Record<string, string>
 
   error: Record<GucchoError, string>
+
+  dan: {
+    cond: Record<OP, string>
+    requirement: Record<Requirement, string>
+  }
 
   country: Record<CountryCode, string>
 
