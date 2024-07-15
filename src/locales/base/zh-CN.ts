@@ -2,9 +2,10 @@ import type { GlobalI18n } from '../@types'
 import { Rank } from '~/def'
 import { RankingStatus } from '~/def/beatmap'
 import { CountryCode } from '~/def/country-code'
+import { OP, Requirement } from '~/def/dan'
 import { Mail } from '~/def/mail'
-import { Scope, UserRole } from '~/def/user'
 import { GucchoError } from '~/def/messages'
+import { Scope, UserRole } from '~/def/user'
 
 export default {
   // reuse en-GB
@@ -146,6 +147,26 @@ export default {
     [GucchoError.FileSystemArticlePathOutsideArticleRoot]: '保存路径在文章目录以外。',
     [GucchoError.TryingToDeleteFallbackContents]: '正在尝试删除缺省的内容。',
     [GucchoError.ArticleNotFound]: '找不到文章。',
+  },
+  dan: {
+    requirement: {
+      [Requirement.Pass]: 'Pass',
+      [Requirement.NoPause]: 'No Pause',
+    },
+    cond: {
+      [OP.AccGte]: '准确度 ≥ {val}',
+      [OP.ScoreGte]: '总分 ≥ {val}',
+      [OP.ModeEq]: '{val} 模式',
+      [OP.BanchoBeatmapIdEq]: '在 Bancho 的铺面ID = {val}',
+      [OP.BeatmapMd5Eq]: '铺面 MD5 = {val}',
+      [OP.WithStableMod]: '加 {val} mod(s)',
+      [OP.Extends]: '满足 {val} 的全部条件',
+      [OP.OR]: '或者',
+      [OP.AND]: 'AND',
+      [OP.NOT]: '不可以',
+      [OP.Remark]: 'Remark: {remark} {val}',
+      [OP.NoPause]: '无暂停',
+    },
   },
 
   country: {
