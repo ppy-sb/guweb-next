@@ -4,7 +4,6 @@ import { IdTransformable, ScoreIdTransformable } from './@extends'
 import type { ActiveMode, ActiveRuleset, LeaderboardRankingSystem, PPRankingSystem } from '~/def/common'
 import type { RulesetScore } from '~/def/score'
 import type { UserCompact } from '~/def/user'
-import { type Cond, type Dan, type Requirement } from '~/def/dan'
 
 export namespace ScoreProvider {
 
