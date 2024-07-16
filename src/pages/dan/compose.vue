@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
 import { validateUsecase } from '~/common/utils/dan'
-import { type Dan, type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
+import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
 
 type RouterOutput = inferRouterOutputs<AppRouter>
@@ -233,7 +233,7 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="result in ach.results" :key="result.score.id">
+          <tr v-for="result in ach.scores" :key="result.score.id">
             <th scope="row">
               <nuxt-link-locale
                 class="link text-sky-500"
