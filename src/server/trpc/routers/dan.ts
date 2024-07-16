@@ -1,6 +1,7 @@
 import { any, number, object, string } from 'zod'
 import { router as _router, publicProcedure } from '../trpc'
 import { staffProcedure } from '../middleware/role'
+import { type DanProvider as BaseDanProvider } from '../../backend/$base/server'
 import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, type Requirement, type RequirementCondBinding } from '~/def/dan'
 import { validateUsecase } from '~/common/utils/dan'
@@ -32,20 +33,12 @@ export const router = _router({
     }))
     .query(async ({ input }) => {
       const searchResult = await dans.search(input)
-      const scoreResult = await Promise.all(searchResult.map(s => dans.runCustomDan(s)))
-      return searchResult.map((i, idxDan) => ({
+      return searchResult.map(i => ({
         ...i,
         id: DanProvider.idToString(i.id),
-        requirements: i.requirements.map((i, idxReq) => ({
+        requirements: i.requirements.map(i => ({
           ...i,
           id: DanProvider.idToString(i.id),
-          scores: scoreResult[idxDan][idxReq].results.map(i => ({
-            ...i,
-            score: {
-              ...i.score,
-              id: ScoreProvider.scoreIdToString(i.score.id),
-            },
-          })),
         })) satisfies DatabaseRequirementCondBinding<string, Requirement, Cond>[],
       })) satisfies DatabaseDan<string>[]
     }),
@@ -88,7 +81,7 @@ export const router = _router({
     const result = await dans.runCustomDan(input)
     return result.map(i => ({
       ...i,
-      results: i.results.map(s => ({
+      scores: i.scores.map(s => ({
         ...s,
         score: {
           ...s.score,
@@ -96,5 +89,18 @@ export const router = _router({
         },
       })),
     }))
+  }),
+
+  getQualifiedScores: publicProcedure.input(string()).query(async ({ input }) => {
+    const result = await dans.getQualifiedScores(DanProvider.stringToId(input))
+    return result.map(i => ({
+      ...i,
+      scores: i.scores.map(s => ({
+        ...s,
+        score: mapId(s.score, ScoreProvider.scoreIdToString),
+        player: mapId(s.player, DanProvider.idToString),
+        beatmap: mapId(s.beatmap, DanProvider.idToString),
+      })),
+    })) satisfies BaseDanProvider.RequirementQualifiedScore<string, string>[] as BaseDanProvider.RequirementQualifiedScore<string, string>[]
   }),
 })

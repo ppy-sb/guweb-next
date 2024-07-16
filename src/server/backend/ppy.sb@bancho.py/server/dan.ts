@@ -62,7 +62,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async search(a: { keyword: string; page: Id; perPage: Id }) {
+  async search(a: { keyword: string; page: Id; perPage: Id }): Promise<DatabaseDan<Id>[]> {
     const f = await this.drizzle.query.dans.findMany({
       where(fields, operators) {
         return operators.or(
@@ -127,6 +127,13 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
+  async getQualifiedScores(id: Id): Promise<Base.RequirementQualifiedScore<Id, ScoreId>[]> {
+    const dan = await this.get(id)
+
+    const res = await this.runCustomDan(dan)
+    return res
+  }
+
   tbl = {
     users: schema.users,
     scores: schema.scores,
@@ -162,34 +169,12 @@ export class DanProvider extends Base<Id, ScoreId> {
     .orderBy(desc(this.tbl.scores.score))
     .limit(10)
 
-  async runCustomDan(opt: Dan): Promise<Array<{
-    requirement: Requirement
-    cond: Cond
-    results: {
-      player: {
-        id: Id
-        name: string
-      }
-      score: {
-        id: bigint
-        accuracy: Id
-        score: Id
-      }
-      beatmap: {
-        id: Id
-        md5: string
-        artist: string
-        title: string
-        version: string
-      }
-    }[]
-  }>> {
+  async runCustomDan(opt: Dan): Promise<Array<Base.RequirementQualifiedScore<Id, ScoreId>>> {
     return await Promise.all(
       opt.requirements.map(
         async a => ({
           requirement: a.type,
-          cond: a.cond,
-          results: await this._sql.where(
+          scores: await this._sql.where(
             and(
               eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
               danSQLChunks(a.cond, opt.requirements, this.tbl),
@@ -265,6 +250,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       return await this.get(id, tx)
     }).catch((e) => {
       console.error(e)
+      throw e
     })
   }
 
