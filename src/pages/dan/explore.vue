@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Requirement } from '../../def/dan'
+import { type DatabaseDan, Requirement } from '../../def/dan'
+import type { DanProvider } from '../../server/backend/$base/server'
 
 const app = useNuxtApp()
 const { t } = useI18n()
@@ -10,6 +11,20 @@ const query = ref({
   perPage: 10,
 })
 const { data, refresh } = await app.$client.dan.search.useQuery(query)
+
+const fmtScore = createNumberFormatter()
+
+const qualifiedScores = ref<Map<string, DanProvider.RequirementQualifiedScore<string, string>[]>>(new Map())
+
+async function lazyLoadScore(dan: DatabaseDan<string>) {
+  const scores = await app.$client.dan.getQualifiedScores.query(dan.id)
+
+  qualifiedScores.value.set(dan.id, scores)
+}
+
+function getDanScore(dan: DatabaseDan<string>, requirement: Requirement) {
+  return qualifiedScores.value.get(dan.id)?.find(r => r.requirement === requirement)?.scores
+}
 </script>
 
 <i18n lang="yaml">
@@ -48,7 +63,7 @@ zh-CN:
       </div>
     </form>
 
-    <div v-for="item in data" :key="item.id" class="border-l-4 border-primary ps-3">
+    <div v-for="item in data" :key="item.id" class="border-l-4 border-primary ps-3 w-full relative">
       <nuxt-link-locale class="text-3xl link" :to="{ name: 'dan-compose', query: { id: item.id } }">
         {{ item.name }}
       </nuxt-link-locale>
@@ -60,70 +75,77 @@ zh-CN:
         <div class="collapse-title ps-0 text-xl font-medium">
           {{ t('detail') }}
         </div>
-        <div class="collapse-content p-0 m-0 space-y-4 leading-relaxed">
+        <div class="collapse-content p-0 m-0 space-y-4 leading-relaxed overflow-auto">
+          <button class="btn" @click="lazyLoadScore(item)">
+            load qualified scores
+          </button>
           <div v-for="requirement in item.requirements" :key="requirement.id" class="border-l-4 border-secondary ps-3">
             <p class="mb-2">
               <span>{{ t('achievement') }}</span>
               <span class="font-bold">{{ Requirement[requirement.type] }}</span>
             </p>
             <app-dan-explain-cond :cond="requirement.cond" />
-            <p class="mb-2">
-              {{ t('qf-scores') }}
-            </p>
-            <table class="table table-sm table-zebra">
-              <thead>
-                <tr>
-                  <th scope="col">
-                    User
-                  </th>
-                  <th scope="col">
-                    Beatmap
-                  </th>
-                  <th scope="col">
-                    Score
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="result in requirement.scores" :key="result.score.id">
-                  <th scope="row">
-                    <nuxt-link-locale
-                      class="link text-sky-500"
-                      :to="{
-                        name: 'user-handle',
-                        params: {
-                          handle: result.player.id,
-                        },
-                      }"
-                    >
-                      {{ result.player.name }}
-                    </nuxt-link-locale>
-                  </th>
-                  <td>
-                    <a
-                      :href="`/b/${result.beatmap.id}`"
-                      class="link text-sky-500"
-                    >
-                      {{ result.beatmap.artist }} - {{ result.beatmap.title }} [{{ result.beatmap.version }}]
-                    </a>
-                  </td>
-                  <td>
-                    <nuxt-link-locale
-                      class="link text-sky-500"
-                      :to="{
-                        name: 'score-id',
-                        params: {
-                          id: result.score.id,
-                        },
-                      }"
-                    >
-                      {{ result.score.id }}
-                    </nuxt-link-locale>
-                    ({{ result.score.accuracy }}%, {{ result.score.score }})
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <template v-if="getDanScore(item, requirement.type)">
+              <p class="mb-2">
+                {{ t('qf-scores') }}
+              </p>
+              <div class="overflow-x-auto border rounded-md">
+                <table class="table table-sm table-zebra">
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        User
+                      </th>
+                      <th scope="col">
+                        Beatmap
+                      </th>
+                      <th scope="col">
+                        Score
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="result in getDanScore(item, requirement.type)" :key="result.score.id">
+                      <th scope="row" class="whitespace-nowrap">
+                        <nuxt-link-locale
+                          class="link text-sky-500"
+                          :to="{
+                            name: 'user-handle',
+                            params: {
+                              handle: result.player.id,
+                            },
+                          }"
+                        >
+                          {{ result.player.name }}
+                        </nuxt-link-locale>
+                      </th>
+                      <td class="whitespace-nowrap">
+                        <a
+                          :href="`/b/${result.beatmap.id}`"
+                          class="link text-sky-500"
+                        >
+                          {{ result.beatmap.artist }} - {{ result.beatmap.title }} [{{ result.beatmap.version }}]
+                        </a>
+                      </td>
+                      <td class="whitespace-nowrap">
+                        <nuxt-link-locale
+                          class="link text-sky-500"
+                          :to="{
+                            name: 'score-id',
+                            params: {
+                              id: result.score.id,
+                            },
+                          }"
+                        >
+                          id={{ result.score.id }}
+                          (acc={{ result.score.accuracy }}%, score={{ fmtScore(result.score.score) }})
+                        </nuxt-link-locale>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
           </div>
         </div>
       </div>
