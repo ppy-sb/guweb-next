@@ -55,4 +55,8 @@ export enum GucchoError {
   InsufficientPrivilegeToEditArticle,
   FileSystemArticlePathOutsideArticleRoot,
   TryingToDeleteFallbackContents,
+
+  // Dan
+  DanNotFound = 11000,
+  CannotSaveDan,
 }
