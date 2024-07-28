@@ -79,7 +79,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       },
       limit: a.perPage,
       offset: a.page * a.perPage,
-      orderBy: dan => asc(dan.id),
+      orderBy: dan => desc(dan.id),
     })
 
     return f.map((i) => {
