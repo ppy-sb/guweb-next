@@ -40,7 +40,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         },
       },
       orderBy: dan => asc(dan.id),
-    }) ?? throwGucchoError(GucchoError.AssertionError)
+    }) ?? throwGucchoError(GucchoError.DanNotFound)
 
     return {
       ...i,
