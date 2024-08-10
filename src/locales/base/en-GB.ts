@@ -48,6 +48,7 @@ export default {
     'clans': 'Clans',
     'account-recovery': 'Account Recovery',
     'user-management': 'User Management',
+    'dans': 'Dans',
   },
   global: {
     'logout': 'Sign out',
@@ -153,6 +154,8 @@ export default {
     [GucchoError.FileSystemArticlePathOutsideArticleRoot]: 'Prohibited Saving article outside articles path.',
     [GucchoError.TryingToDeleteFallbackContents]: 'Trying to delete fallback contents.',
     [GucchoError.ArticleNotFound]: 'Article not found.',
+    [GucchoError.DanNotFound]: 'Dan not found.',
+    [GucchoError.CannotSaveDan]: 'Cannot save Dan',
   },
   dan: {
     requirement: {
