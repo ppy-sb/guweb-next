@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { type DatabaseDan, Requirement } from '../../def/dan'
-import type { DanProvider } from '../../server/backend/$base/server'
+import { type DatabaseDan, Requirement } from '../def/dan'
+import type { DanProvider } from '../server/backend/$base/server'
 
 const app = useNuxtApp()
 const { t } = useI18n()
@@ -34,6 +34,7 @@ en-GB:
   achievement: 'achievement: '
   detail: Detail
   qf-scores: Qualified Scores (best 10)
+  load-qualified-scores: load qualified scores
 
 zh-CN:
   search-text: 搜索段位成就...
@@ -41,6 +42,7 @@ zh-CN:
   achievement: '成就: '
   detail: 详细
   qf-scores: 满足条件的成绩 (前 10)
+  load-qualified-scores: 加载满足条件的成绩
 
 # TODO fr, DE
 </i18n>
@@ -77,7 +79,7 @@ zh-CN:
         </div>
         <div class="collapse-content p-0 m-0 space-y-4 leading-relaxed overflow-auto">
           <button class="btn" @click="lazyLoadScore(item)">
-            load qualified scores
+            {{ t('load-qualified-scores') }}
           </button>
           <div v-for="requirement in item.requirements" :key="requirement.id" class="border-l-4 border-secondary ps-3">
             <p class="mb-2">
