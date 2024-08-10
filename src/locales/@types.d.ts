@@ -21,6 +21,7 @@ type Title =
 | 'articles'
 | 'clans'
 | 'account-recovery'
+| 'dans'
 
 type KGlobal =
 | 'logout'
