@@ -12,7 +12,6 @@ import * as icon from '~/common/icon'
 withDefaults(defineProps<{ listMode?: boolean; cond: Cond }>(), { listMode: false })
 const fmtScore = createScoreFormatter()
 
-const { t } = useI18n()
 const dan = localeKey.root.dan
 const $cond = dan.cond
 
@@ -35,7 +34,7 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
 <template>
   <template v-if="isConcreteCond(cond.type)">
     <span v-if="cond.type === OP.NoPause" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
-      {{ t($cond[cond.type].__path__) }}
+      {{ $t($cond[cond.type].__path__) }}
     </span>
 
     <i18n-t v-else-if="cond.type === OP.ModeEq" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
@@ -99,7 +98,7 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
       </template>
     </i18n-t>
     <span v-else-if="cond.type === OP.NOT">
-      <span class="badge badge-accent bg-accent/40 dark:bg-accent">{{ t(dan.cond[cond.type].__path__) }}</span>
+      <span class="badge badge-accent bg-accent/40 dark:bg-accent">{{ $t($cond[cond.type].__path__) }}</span>
       <span>&nbsp;</span>
       <app-dan-explain-cond :cond="cond.cond" />
     </span>
@@ -120,10 +119,9 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
               :class="{
                 'badge badge-accent bg-accent/40 dark:bg-accent me-1 lg:mx-1': cond.type === OP.OR,
               }"
-            >{{ cond.type === OP.AND ? ',' : `${t($cond[cond.type].__path__)}` }}</span>
+            >{{ cond.type === OP.AND ? ',' : `${$t($cond[cond.type].__path__)}` }}</span>
             <br v-if="cond.type === OP.AND">
           </template>
-          <span v-else>.</span>
         </template>
       </div>
     </template>
