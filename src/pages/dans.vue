@@ -2,6 +2,13 @@
 import { type DatabaseDan, Requirement } from '../def/dan'
 import type { DanProvider } from '../server/backend/$base/server'
 
+// eslint-disable-next-line antfu/no-const-enum
+const enum State {
+  Error,
+  Idle,
+  Loading,
+}
+
 const app = useNuxtApp()
 const { t } = useI18n()
 const r = useRoute()
@@ -14,16 +21,26 @@ const { data, refresh } = await app.$client.dan.search.useQuery(query)
 
 const fmtScore = createNumberFormatter()
 
-const qualifiedScores = ref<Map<string, DanProvider.RequirementQualifiedScore<string, string>[]>>(new Map())
+const qualifiedScores = ref<WeakMap<DatabaseDan<string>, DanProvider.RequirementQualifiedScore<string, string>[]>>(new Map())
+const loadingStates = ref<WeakMap<DatabaseDan<string>, State>>(new Map())
 
 async function lazyLoadScore(dan: DatabaseDan<string>) {
-  const scores = await app.$client.dan.getQualifiedScores.query(dan.id)
-
-  qualifiedScores.value.set(dan.id, scores)
+  loadingStates.value.set(dan, State.Loading)
+  try {
+    const scores = await app.$client.dan.getQualifiedScores.query(dan.id)
+    qualifiedScores.value.set(dan, scores)
+    loadingStates.value.set(dan, State.Idle)
+  }
+  catch (e) {
+    loadingStates.value.set(dan, State.Error)
+  }
 }
 
-function getDanScore(dan: DatabaseDan<string>, requirement: Requirement) {
-  return qualifiedScores.value.get(dan.id)?.find(r => r.requirement === requirement)?.scores
+function getDanRequirementScores(dan: DatabaseDan<string>, requirement: Requirement) {
+  return qualifiedScores.value.get(dan)?.find(r => r.requirement === requirement)?.scores
+}
+function getLoadingState(dan: DatabaseDan<string>) {
+  return loadingStates.value.get(dan)
 }
 </script>
 
@@ -87,9 +104,9 @@ zh-CN:
               <span class="font-bold">{{ Requirement[requirement.type] }}</span>
             </p>
             <app-dan-explain-cond :cond="requirement.cond" />
-            <template v-if="getDanScore(item, requirement.type)">
-              <p class="mb-2">
-                {{ t('qf-scores') }}
+            <template v-if="getLoadingState(item) === State.Idle || getLoadingState(item) === State.Loading">
+              <p class="my-3">
+                <span class="text-sm font-bold">{{ t('qf-scores') }}</span>
               </p>
               <div class="overflow-x-auto border rounded-md">
                 <table class="table table-sm table-zebra">
@@ -107,7 +124,7 @@ zh-CN:
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="result in getDanScore(item, requirement.type)" :key="result.score.id">
+                    <tr v-for="result in getDanRequirementScores(item, requirement.type)" :key="result.score.id">
                       <th scope="row" class="whitespace-nowrap">
                         <nuxt-link-locale
                           class="link text-sky-500"
@@ -145,6 +162,14 @@ zh-CN:
                       </td>
                     </tr>
                   </tbody>
+                  <div
+                    class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur-sm backdrop-blur"
+                    :class="{
+                      'opacity-100 !blur-none': getLoadingState(item) === State.Loading,
+                    }"
+                  >
+                    <div class="m-auto loading" />
+                  </div>
                 </table>
               </div>
             </template>
