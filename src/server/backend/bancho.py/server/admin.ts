@@ -1,16 +1,20 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { aliasedTable, and, count, desc, eq, sql, sum } from 'drizzle-orm'
 import type { Id } from '..'
 import { encryptBanchoPassword } from '../crypto'
 import * as schema from '../drizzle/schema'
 import { config } from '../env'
 import { Logger } from '../log'
-import { type DatabaseUserCompactFields, type DatabaseUserOptionalFields, fromCountryCode, toBanchoPyPriv, toRoles, toSafeName, toUserCompact, toUserOptional } from '../transforms'
-import { BanchoPyPrivilege } from '../enums'
+import { type DatabaseUserCompactFields, type DatabaseUserOptionalFields, fromCountryCode, toBanchoMode, toBanchoPyMode, toBanchoPyPriv, toRoles, toSafeName, toUserCompact, toUserOptional } from '../transforms'
+import { BanchoPyPrivilege, BanchoPyScoreStatus } from '../enums'
 import { useDrizzle } from './source/drizzle'
 import { GucchoError } from '~/def/messages'
 import { type UserClan, type UserCompact, type UserOptional, UserRole, type UserSecrets } from '~/def/user'
 import { AdminProvider as Base } from '$base/server'
 import { type ComputedUserRole } from '~/utils/common'
+import { type Mode, type Ruleset } from '~/def'
+import { Grade } from '~/def/score'
+import { type LeaderboardRankingSystem } from '~/def/common'
+import { type ModeRulesetScoreStatistic, type UserModeRulesetStatistics } from '~/def/statistics'
 
 const logger = Logger.child({ label: 'user' })
 
@@ -195,6 +199,122 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
     return {
       ...toUserCompact(user, this.config),
       ...toUserOptional(user),
+    }
+  }
+
+  computeScoreStatus = this.drizzle
+    .select({
+      id: schema.scores.userId,
+      mode: schema.scores.mode,
+      totalScore: sum(schema.scores.score).mapWith(BigInt).as('computedTotalScore'),
+      totalHit: sum(sql`${schema.scores.n50} + ${schema.scores.n100} + ${schema.scores.n300} + ${schema.scores.nGeki} + ${schema.scores.nKatu}`).mapWith(BigInt).as('computedTTH'),
+      playTime: sum(schema.scores.timeElapsed).mapWith(Number).as('computedPlayTime'),
+    })
+    .from(schema.scores)
+    .groupBy(schema.scores.userId, schema.scores.mode)
+    .as('cts')
+
+  computeRankedScoreStatus = this.drizzle
+    .select({
+      id: schema.scores.userId,
+      mode: schema.scores.mode,
+      rankedScore: sum(schema.scores.score).mapWith(BigInt).as('rankedScore'),
+      count: {
+        A: count(sql`if(${schema.scores.grade} = ${Grade.A}, 1, null)`).as('gradeA'),
+        B: count(sql`if(${schema.scores.grade} = ${Grade.B}, 1, null)`).as('gradeB'),
+        C: count(sql`if(${schema.scores.grade} = ${Grade.C}, 1, null)`).as('gradeC'),
+        D: count(sql`if(${schema.scores.grade} = ${Grade.D}, 1, null)`).as('gradeD'),
+        F: count(sql`if(${schema.scores.grade} = ${Grade.F}, 1, null)`).as('gradeF'),
+        S: count(sql`if(${schema.scores.grade} = ${Grade.S}, 1, null)`).as('gradeS'),
+        SH: count(sql`if(${schema.scores.grade} = ${Grade.SH}, 1, null)`).as('gradeSH'),
+        SS: count(sql`if(${schema.scores.grade} = ${Grade.SS}, 1, null)`).as('gradeSS'),
+        SSH: count(sql`if(${schema.scores.grade} = ${Grade.SSH}, 1, null)`).as('gradeSSH'),
+      },
+    })
+    .from(schema.scores)
+    .groupBy(schema.scores.userId, schema.scores.mode)
+    .where(eq(schema.scores.status, BanchoPyScoreStatus.Pick))
+    .as('crs')
+
+  async calcUserStatistics(q: { id: Id; mode: Mode; ruleset: Ruleset }): Promise<{
+    totalScore: bigint
+    totalHit: bigint
+    playTime: number
+    rankedScore: bigint
+    scoreRankComposition: Record<Grade, number>
+  }> {
+    const { id, mode, ruleset } = q
+    return await this.drizzle
+      .with(
+        this.computeScoreStatus,
+        this.computeRankedScoreStatus,
+      )
+      .select({
+        totalScore: this.computeScoreStatus.totalScore,
+        totalHit: this.computeScoreStatus.totalHit,
+        playTime: this.computeScoreStatus.playTime,
+        rankedScore: this.computeRankedScoreStatus.rankedScore,
+        scoreRankComposition: {
+          [Grade.A]: this.computeRankedScoreStatus.count.A,
+          [Grade.B]: this.computeRankedScoreStatus.count.B,
+          [Grade.C]: this.computeRankedScoreStatus.count.C,
+          [Grade.D]: this.computeRankedScoreStatus.count.D,
+          [Grade.F]: this.computeRankedScoreStatus.count.F,
+          [Grade.S]: this.computeRankedScoreStatus.count.S,
+          [Grade.SH]: this.computeRankedScoreStatus.count.SH,
+          [Grade.SS]: this.computeRankedScoreStatus.count.SS,
+          [Grade.SSH]: this.computeRankedScoreStatus.count.SSH,
+        },
+      })
+      .from(this.computeScoreStatus)
+      .innerJoin(this.computeRankedScoreStatus, and(
+        eq(this.computeScoreStatus.id, this.computeRankedScoreStatus.id),
+        eq(this.computeScoreStatus.mode, this.computeRankedScoreStatus.mode),
+      ))
+      .where(
+        and(
+          eq(this.computeScoreStatus.id, id),
+          eq(this.computeScoreStatus.mode, toBanchoPyMode(mode, ruleset))
+        )
+      )
+      .limit(1)
+      .then(res => res[0])
+  }
+
+  async getStoredUserStatistics(query: { id: number; mode: Mode; ruleset: Ruleset }): Promise<ModeRulesetScoreStatistic> {
+    const res = await this.drizzle.query.stats.findFirst({
+      where: (tbl, op) => op.and(op.eq(tbl.id, query.id), op.eq(tbl.mode, toBanchoPyMode(query.mode, query.ruleset))),
+    }) ?? throwGucchoError(GucchoError.UserNotFound)
+    return {
+      playCount: res.plays,
+      playTime: res.playTime,
+      totalHits: res.totalHits,
+      level: getLevel(res.totalScore),
+      maxCombo: res.maxCombo,
+      scoreRankComposition: {
+        [Grade.F]: 0,
+        [Grade.D]: 0,
+        [Grade.C]: 0,
+        [Grade.B]: 0,
+        [Grade.A]: res.aCount,
+        [Grade.SH]: res.shCount,
+        [Grade.SS]: res.xCount,
+        [Grade.SSH]: res.xhCount,
+        [Grade.S]: res.sCount,
+      },
+      replayWatchedByOthers: res.replayViews,
+      ppv1: {
+        performance: 0,
+      },
+      ppv2: {
+        performance: res.pp,
+      },
+      rankedScore: {
+        score: res.rankedScore,
+      },
+      totalScore: {
+        score: res.totalScore,
+      },
     }
   }
 }

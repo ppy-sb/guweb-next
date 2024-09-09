@@ -1,5 +1,5 @@
 import { array, nativeEnum, number, object, string, tuple } from 'zod'
-import { zodHandle } from '../../shapes'
+import { zodHandle, zodMode, zodRuleset } from '../../shapes'
 import { router as log } from './log'
 import { UserProvider, admin } from '~/server/singleton/service'
 import { staffProcedure } from '~/server/trpc/middleware/role'
@@ -78,5 +78,26 @@ export const router = _router({
 
         return mapId(res, UserProvider.idToString)
       }),
+
+    computeUserStat: staffProcedure
+      .input(object({
+        id: string(),
+        mode: zodMode,
+        ruleset: zodRuleset,
+      }))
+      .query(async ({ input }) => {
+        return admin.calcUserStatistics({ id: UserProvider.stringToId(input.id), mode: input.mode, ruleset: input.ruleset })
+      }),
+
+    userModeStat: staffProcedure
+      .input(object({
+        id: string(),
+        mode: zodMode,
+        ruleset: zodRuleset,
+      }))
+      .query(async ({ input }) => {
+        return admin.getStoredUserStatistics({ id: UserProvider.stringToId(input.id), mode: input.mode, ruleset: input.ruleset })
+      }),
+
   }),
 })

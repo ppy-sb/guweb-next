@@ -288,5 +288,6 @@ de-DE:
         class="w-5 h-5"
       />
     </button>
+    <button class="btn" @click="integrity" />
   </div>
 </template>

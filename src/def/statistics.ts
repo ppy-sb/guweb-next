@@ -34,3 +34,11 @@ export type UserModeRulesetStatistics<RS extends LeaderboardRankingSystem> = {
   replayWatchedByOthers: number
   scoreRankComposition: Record<Grade, number>
 } & Record<RS & PPRankingSystem, PPRank> & Record<RS & LeaderboardScoreRankingSystem, ScoreRank>
+
+export interface ModeRulesetScoreStatistic {
+  totalScore: bigint
+  totalHit: bigint
+  playTime: number
+  rankedScore: bigint
+  scoreRankComposition: Record<Grade, number>
+}
