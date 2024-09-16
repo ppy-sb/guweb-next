@@ -37,8 +37,11 @@ export type UserModeRulesetStatistics<RS extends LeaderboardRankingSystem> = {
 
 export interface ModeRulesetScoreStatistic {
   totalScore: bigint
-  totalHit: bigint
+  totalHits: bigint
   playTime: number
+  playCount: number
+  level: number
+  maxCombo: number
   rankedScore: bigint
   scoreRankComposition: Record<Grade, number>
 }

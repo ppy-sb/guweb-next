@@ -1,4 +1,5 @@
 import { type Mode } from 'node:fs'
+import { type Query } from 'drizzle-orm'
 import { IdTransformable } from './@extends'
 import type { Composition } from './@common'
 import { type ComputedUserRole } from '~/utils/common'
@@ -36,4 +37,7 @@ export abstract class AdminProvider<Id> extends IdTransformable {
 
   abstract calcUserStatistics(query: { id: Id; mode: Mode; ruleset: Ruleset }): Promise<ModeRulesetScoreStatistic>
   abstract getStoredUserStatistics(query: { id: Id; mode: Mode; ruleset: Ruleset }): Promise<ModeRulesetScoreStatistic>
+  abstract updateUserStatistics(query: { id: Id; mode: Mode; ruleset: Ruleset }, update: Partial<ModeRulesetScoreStatistic>): Promise<ModeRulesetScoreStatistic>
+
+  abstract temp_userUpdateStatGenSQL(query: { id: Id; mode: Mode; ruleset: Ruleset }, update: Partial<ModeRulesetScoreStatistic>): Promise<Query>
 }

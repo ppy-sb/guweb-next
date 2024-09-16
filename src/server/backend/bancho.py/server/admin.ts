@@ -1,4 +1,4 @@
-import { aliasedTable, and, count, desc, eq, sql, sum } from 'drizzle-orm'
+import { type Query, aliasedTable, and, count, desc, eq, max, sql, sum } from 'drizzle-orm'
 import type { Id } from '..'
 import { encryptBanchoPassword } from '../crypto'
 import * as schema from '../drizzle/schema'
@@ -209,6 +209,7 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
       totalScore: sum(schema.scores.score).mapWith(BigInt).as('computedTotalScore'),
       totalHit: sum(sql`${schema.scores.n50} + ${schema.scores.n100} + ${schema.scores.n300} + ${schema.scores.nGeki} + ${schema.scores.nKatu}`).mapWith(BigInt).as('computedTTH'),
       playTime: sum(schema.scores.timeElapsed).mapWith(Number).as('computedPlayTime'),
+      playCount: count(sql`1`).as('playCount'),
     })
     .from(schema.scores)
     .groupBy(schema.scores.userId, schema.scores.mode)
@@ -219,6 +220,7 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
       id: schema.scores.userId,
       mode: schema.scores.mode,
       rankedScore: sum(schema.scores.score).mapWith(BigInt).as('rankedScore'),
+      maxCombo: max(schema.scores.maxCombo).mapWith(Number).as('maxCombo'),
       count: {
         A: count(sql`if(${schema.scores.grade} = ${Grade.A}, 1, null)`).as('gradeA'),
         B: count(sql`if(${schema.scores.grade} = ${Grade.B}, 1, null)`).as('gradeB'),
@@ -236,24 +238,20 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
     .where(eq(schema.scores.status, BanchoPyScoreStatus.Pick))
     .as('crs')
 
-  async calcUserStatistics(q: { id: Id; mode: Mode; ruleset: Ruleset }): Promise<{
-    totalScore: bigint
-    totalHit: bigint
-    playTime: number
-    rankedScore: bigint
-    scoreRankComposition: Record<Grade, number>
-  }> {
+  async calcUserStatistics(q: { id: Id; mode: Mode; ruleset: Ruleset }): Promise<ModeRulesetScoreStatistic> {
     const { id, mode, ruleset } = q
-    return await this.drizzle
+    const result = await this.drizzle
       .with(
         this.computeScoreStatus,
         this.computeRankedScoreStatus,
       )
       .select({
         totalScore: this.computeScoreStatus.totalScore,
-        totalHit: this.computeScoreStatus.totalHit,
+        totalHits: this.computeScoreStatus.totalHit,
         playTime: this.computeScoreStatus.playTime,
+        playCount: this.computeScoreStatus.playCount,
         rankedScore: this.computeRankedScoreStatus.rankedScore,
+        maxCombo: this.computeRankedScoreStatus.maxCombo,
         scoreRankComposition: {
           [Grade.A]: this.computeRankedScoreStatus.count.A,
           [Grade.B]: this.computeRankedScoreStatus.count.B,
@@ -279,6 +277,35 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
       )
       .limit(1)
       .then(res => res[0])
+
+    if (!result) {
+      return {
+        playCount: 0,
+        playTime: 0,
+        totalHits: 0n,
+        level: 0,
+        maxCombo: 0,
+        scoreRankComposition: {
+          [Grade.F]: 0,
+          [Grade.D]: 0,
+          [Grade.C]: 0,
+          [Grade.B]: 0,
+          [Grade.A]: 0,
+          [Grade.SH]: 0,
+          [Grade.SS]: 0,
+          [Grade.SSH]: 0,
+          [Grade.S]: 0,
+        },
+        rankedScore: 0n,
+        totalScore: 0n,
+
+      } satisfies ModeRulesetScoreStatistic
+    }
+
+    return {
+      ...result,
+      level: getLevel(result.totalScore),
+    }
   }
 
   async getStoredUserStatistics(query: { id: number; mode: Mode; ruleset: Ruleset }): Promise<ModeRulesetScoreStatistic> {
@@ -288,7 +315,7 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
     return {
       playCount: res.plays,
       playTime: res.playTime,
-      totalHits: res.totalHits,
+      totalHits: BigInt(res.totalHits),
       level: getLevel(res.totalScore),
       maxCombo: res.maxCombo,
       scoreRankComposition: {
@@ -302,19 +329,41 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
         [Grade.SSH]: res.xhCount,
         [Grade.S]: res.sCount,
       },
-      replayWatchedByOthers: res.replayViews,
-      ppv1: {
-        performance: 0,
-      },
-      ppv2: {
-        performance: res.pp,
-      },
-      rankedScore: {
-        score: res.rankedScore,
-      },
-      totalScore: {
-        score: res.totalScore,
-      },
+      // replayWatchedByOthers: res.replayViews,
+      // ppv1: {
+      //   performance: 0,
+      // },
+      // ppv2: {
+      //   performance: res.pp,
+      // },
+      rankedScore: res.rankedScore,
+      totalScore: res.totalScore,
     }
+  }
+
+  updateUserStatistics(query: { id: number; mode: Mode; ruleset: Ruleset }, update: Partial<ModeRulesetScoreStatistic>): Promise<ModeRulesetScoreStatistic> {
+    throw new Error('Method not implemented.')
+  }
+
+  async temp_userUpdateStatGenSQL(query: { id: number; mode: Mode; ruleset: Ruleset }, update: Partial<ModeRulesetScoreStatistic>): Promise<Query> {
+    return this.drizzle.update(schema.stats).set({
+      totalHits: Number(update.totalHits),
+      playTime: update.playTime,
+      plays: update.playCount,
+      rankedScore: update.rankedScore,
+      totalScore: update.totalScore,
+      maxCombo: update.maxCombo,
+      aCount: update.scoreRankComposition?.[Grade.A],
+      shCount: update.scoreRankComposition?.[Grade.SH],
+      xCount: update.scoreRankComposition?.[Grade.SS],
+      xhCount: update.scoreRankComposition?.[Grade.SSH],
+      sCount: update.scoreRankComposition?.[Grade.S],
+    })
+      .where(
+        and(
+          eq(schema.stats.id, query.id),
+          eq(schema.stats.mode, toBanchoPyMode(query.mode, query.ruleset))
+        )
+      ).toSQL()
   }
 }

@@ -1,4 +1,4 @@
-import { array, nativeEnum, number, object, string, tuple } from 'zod'
+import { any, array, nativeEnum, number, object, string, tuple } from 'zod'
 import { zodHandle, zodMode, zodRuleset } from '../../shapes'
 import { router as log } from './log'
 import { UserProvider, admin } from '~/server/singleton/service'
@@ -6,6 +6,7 @@ import { staffProcedure } from '~/server/trpc/middleware/role'
 import { router as _router } from '~/server/trpc/trpc'
 import { UserRole } from '~/def/user'
 import { CountryCode } from '~/def/country-code'
+import { type ModeRulesetScoreStatistic } from '~/def/statistics'
 
 const searchParam = object({
   id: string().trim(),
@@ -97,6 +98,17 @@ export const router = _router({
       }))
       .query(async ({ input }) => {
         return admin.getStoredUserStatistics({ id: UserProvider.stringToId(input.id), mode: input.mode, ruleset: input.ruleset })
+      }),
+
+    temp_userUpdateStatGenSQL: staffProcedure
+      .input(object({
+        id: string(),
+        mode: zodMode,
+        ruleset: zodRuleset,
+        stat: any().refine((e): e is ModeRulesetScoreStatistic => !!e),
+      }))
+      .query(async ({ input }) => {
+        return admin.temp_userUpdateStatGenSQL({ id: UserProvider.stringToId(input.id), mode: input.mode, ruleset: input.ruleset }, input.stat)
       }),
 
   }),
