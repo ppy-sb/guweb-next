@@ -43,9 +43,11 @@ const modal = ref<{
 
 const current = ref<ModeRulesetScoreStatistic>(structuredClone(defStat))
 const db = ref<ModeRulesetScoreStatistic>(structuredClone(defStat))
-const computed = ref<ModeRulesetScoreStatistic>()
+const calculated = ref<ModeRulesetScoreStatistic>()
 
 const sql = ref<{ params: unknown[]; sql: string }>()
+const error = ref<Error>()
+const injectSql = computed(() => sql.value ? sql.value.sql.split('?').map((i, idx) => `${i}${sql.value!.params[idx] ?? ''}`).join('') : '')
 
 const failSafe_anyStateLoaded = ref(false)
 
@@ -60,22 +62,24 @@ async function switchMode(v: Partial<{ mode: Mode; ruleset: Ruleset; rankingSyst
 async function loadStored() {
   failSafe_anyStateLoaded.value = true
   const { mode, ruleset } = sw
-  db.value = current.value = await app.$client.admin.userManagement.userModeStat.query({ id, mode, ruleset })
+  const res = await app.$client.admin.userManagement.userModeStat.query({ id, mode, ruleset })
+  current.value = structuredClone(res)
+  db.value = structuredClone(res)
 }
 
 async function loadIntegrity() {
   failSafe_anyStateLoaded.value = true
   const { mode, ruleset } = sw
-  computed.value = await app.$client.admin.userManagement.computeUserStat.query({ id, mode, ruleset })
+  calculated.value = await app.$client.admin.userManagement.computeUserStat.query({ id, mode, ruleset })
 }
 
 function overwrite() {
-  if (!computed.value) {
+  if (!calculated.value) {
     return
   }
   current.value = {
     ...current.value,
-    ...computed.value,
+    ...calculated.value,
   }
 }
 
@@ -87,22 +91,71 @@ async function transaction(cb: () => Promise<any>, flag = pending) {
 
 function compareReturnClass(key: (v: ModeRulesetScoreStatistic) => unknown) {
   return {
-    'input-warning': current.value && computed.value && key(current.value) !== key(computed.value),
+    'input-warning': current.value && calculated.value && key(current.value) !== key(calculated.value),
     'input-info': current.value && db.value && key(current.value) !== key(db.value),
     // 'input-neutral': current.value && computed.value && db.value && key(current.value) === key(computed.value) && key(current.value) === key(db.value),
   }
 }
 
 async function save() {
-  sql.value = await app.$client.admin.userManagement.temp_userUpdateStatGenSQL.query({ id, mode: sw.mode, ruleset: sw.ruleset, stat: current.value })
-  modal.value?.showModal()
+  error.value = undefined
+  const stat = structuredClone({
+    ...current.value,
+    scoreRankComposition: {
+      ...current.value.scoreRankComposition,
+    },
+  })
+  for (const [i, value] of Object.entries(stat).filter((v): v is [Exclude<keyof typeof db.value, 'scoreRankComposition'>, number | bigint] => v[0] !== 'scoreRankComposition')) {
+    if (value === db.value[i]) {
+      delete stat[i]
+    }
+
+    const newVal: any = (value as number) - (db.value[i] as number)
+
+    if (newVal === 0 || newVal === 0n) {
+      delete stat[i]
+    }
+    else {
+      // @ts-expect-error wtf
+      stat[i] = newVal
+    }
+  }
+  for (const [i, value] of Object.entries(stat.scoreRankComposition)) {
+    const _i = i as keyof typeof stat.scoreRankComposition
+    if (value === db.value.scoreRankComposition[_i]) {
+      delete stat.scoreRankComposition[_i]
+    }
+    const newVal = value - db.value.scoreRankComposition[_i]
+    if (newVal !== 0) {
+      stat.scoreRankComposition[_i] = newVal
+    }
+    else {
+      delete stat.scoreRankComposition[_i]
+    }
+  }
+
+  try {
+    sql.value = await app.$client.admin.userManagement.temp_userUpdateStatGenSQL.query({ id, mode: sw.mode, ruleset: sw.ruleset, stat })
+    modal.value?.showModal()
+  }
+  catch (e) {
+    if (e instanceof Error) {
+      error.value = e
+    }
+  }
 }
 </script>
 
 <template>
   <div class="container mx-auto max-w-screen-xl flex flex-col">
-    <app-mode-switcher :model-value="sw" class="mx-auto" @update:model-value="switchMode" />
+    <app-mode-switcher :model-value="sw as any" class="mx-auto" @update:model-value="switchMode as any" />
     <div class="relative mx-auto">
+      <div v-if="error" class="alert alert-error my-2">
+        <span>{{ error.message }}</span>
+        <button class="btn btn-sm btn-ghost ms-auto" @click="error = undefined">
+          x
+        </button>
+      </div>
       <div
         class="flex gap-4 transition-[filter] transition-opacity" :class="{
           'opacity-30 saturate-50 blur': pending,
@@ -112,42 +165,42 @@ async function save() {
           <button class="btn btn-sm btn-info w-full" @click="transaction(loadIntegrity)">
             compute
           </button>
-          <div v-if="computed" class="mt-2">
+          <div v-if="calculated" class="mt-2">
             <dl>
               <dt>ranked score</dt>
               <dd>
                 <div class="input input-sm input-disabled text-end">
-                  {{ fmt(computed.rankedScore) }}
+                  {{ fmt(calculated.rankedScore) }}
                 </div>
               </dd>
               <dt>total score</dt>
               <dd>
                 <div class="input input-sm input-disabled text-end">
-                  {{ fmt(computed.totalScore) }}
+                  {{ fmt(calculated.totalScore) }}
                 </div>
               </dd>
               <dt>total hits</dt>
               <dd>
                 <div class="input input-sm input-disabled text-end">
-                  {{ fmt(computed.totalHits) }}
+                  {{ fmt(calculated.totalHits) }}
                 </div>
               </dd>
               <dt>play time</dt>
               <dd>
                 <div class="input input-sm input-disabled text-end">
-                  {{ fmt(computed.playTime) }}
+                  {{ fmt(calculated.playTime) }}
                 </div>
               </dd>
               <dt>play count</dt>
               <dd>
                 <div class="input input-sm input-disabled text-end">
-                  {{ fmt(computed.playCount) }}
+                  {{ fmt(calculated.playCount) }}
                 </div>
               </dd>
               <dt>max combo</dt>
               <dd>
                 <div class="input input-sm input-disabled text-end">
-                  {{ fmt(computed.maxCombo) }}
+                  {{ fmt(calculated.maxCombo) }}
                 </div>
               </dd>
               <!-- <dt>level</dt>
@@ -160,7 +213,7 @@ async function save() {
                 <dt>rank.{{ key }}</dt>
                 <dd>
                   <div class="input input-sm input-disabled text-end">
-                    {{ fmt(computed.scoreRankComposition[key]) }}
+                    {{ fmt(calculated.scoreRankComposition[key]) }}
                   </div>
                 </dd>
               </template>
@@ -168,7 +221,7 @@ async function save() {
           </div>
         </div>
         <div>
-          <button class="btn btn-sm btn-success" :disabled="!computed" @click="overwrite">
+          <button class="btn btn-sm btn-success" :disabled="!calculated" @click="overwrite">
             ->
           </button>
         </div>
@@ -259,9 +312,9 @@ async function save() {
       <span class="card-title">save</span>
       <div class="card-body">
         <span>Under evaluation. Execute the following SQL:</span>
-        <pre class="mockup-code">
+        <pre>
         <code class="whitespace-pre-wrap">
-{{ sql?.sql }} -- [{{ sql?.params.map(i => (i as any).toString()).join(', ') }}]
+{{ injectSql }}
         </code>
       </pre>
       </div>

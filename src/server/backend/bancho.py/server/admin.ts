@@ -1,4 +1,4 @@
-import { type Query, aliasedTable, and, count, desc, eq, max, sql, sum } from 'drizzle-orm'
+import { type Query, and, count, desc, eq, max, sql, sum } from 'drizzle-orm'
 import type { Id } from '..'
 import { encryptBanchoPassword } from '../crypto'
 import * as schema from '../drizzle/schema'
@@ -13,8 +13,7 @@ import { AdminProvider as Base } from '$base/server'
 import { type ComputedUserRole } from '~/utils/common'
 import { type Mode, type Ruleset } from '~/def'
 import { Grade } from '~/def/score'
-import { type LeaderboardRankingSystem } from '~/def/common'
-import { type ModeRulesetScoreStatistic, type UserModeRulesetStatistics } from '~/def/statistics'
+import { type ModeRulesetScoreStatistic } from '~/def/statistics'
 
 const logger = Logger.child({ label: 'user' })
 
@@ -346,19 +345,20 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
   }
 
   async temp_userUpdateStatGenSQL(query: { id: number; mode: Mode; ruleset: Ruleset }, update: Partial<ModeRulesetScoreStatistic>): Promise<Query> {
-    return this.drizzle.update(schema.stats).set({
-      totalHits: Number(update.totalHits),
-      playTime: update.playTime,
-      plays: update.playCount,
-      rankedScore: update.rankedScore,
-      totalScore: update.totalScore,
-      maxCombo: update.maxCombo,
-      aCount: update.scoreRankComposition?.[Grade.A],
-      shCount: update.scoreRankComposition?.[Grade.SH],
-      xCount: update.scoreRankComposition?.[Grade.SS],
-      xhCount: update.scoreRankComposition?.[Grade.SSH],
-      sCount: update.scoreRankComposition?.[Grade.S],
-    })
+    return this.drizzle.update(schema.stats)
+      .set({
+        totalHits: update.totalHits ? sql`${schema.stats.totalHits} + ${Number(update.totalHits)}` : undefined,
+        playTime: update.playTime ? sql`${schema.stats.playTime} + ${update.playTime}` : undefined,
+        plays: update.playCount ? sql`${schema.stats.plays} + ${update.playCount}` : undefined,
+        rankedScore: update.rankedScore ? sql`${schema.stats.rankedScore} + ${update.rankedScore}` : undefined,
+        totalScore: update.totalScore ? sql`${schema.stats.totalScore} + ${update.totalScore}` : undefined,
+        maxCombo: update.maxCombo ? sql`${schema.stats.maxCombo} + ${update.maxCombo}` : undefined,
+        aCount: update.scoreRankComposition?.[Grade.A] ? sql`${schema.stats.aCount} + ${update.scoreRankComposition[Grade.A]}` : undefined,
+        shCount: update.scoreRankComposition?.[Grade.SH] ? sql`${schema.stats.shCount} + ${update.scoreRankComposition[Grade.SH]}` : undefined,
+        xCount: update.scoreRankComposition?.[Grade.SS] ? sql`${schema.stats.xCount} + ${update.scoreRankComposition[Grade.SS]}` : undefined,
+        xhCount: update.scoreRankComposition?.[Grade.SSH] ? sql`${schema.stats.xhCount} + ${update.scoreRankComposition[Grade.SSH]}` : undefined,
+        sCount: update.scoreRankComposition?.[Grade.S] ? sql`${schema.stats.sCount} + ${update.scoreRankComposition[Grade.S]}` : undefined,
+      })
       .where(
         and(
           eq(schema.stats.id, query.id),
