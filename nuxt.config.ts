@@ -43,6 +43,13 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: 'modern-compiler', // or 'modern'
+        },
+      },
+    },
   },
 
   typescript: {
@@ -103,9 +110,11 @@ export default defineNuxtConfig({
       },
     },
   },
+
   runtimeConfig: {
     public: uiConf,
   },
+
   watch: [
     /\.\/guccho.(ui|backend).config.ts/,
     './daisyui.themes.ts',
@@ -170,4 +179,6 @@ export default defineNuxtConfig({
       },
     },
   },
+
+  compatibilityDate: '2024-09-27',
 })

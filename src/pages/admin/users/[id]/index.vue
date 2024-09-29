@@ -5,12 +5,12 @@ import { CountryCode } from '~/def/country-code'
 import { UserRole } from '~/def/user'
 import { useSession } from '~/store/session'
 
-const DISALLOW_USER_EDIT_ITSELF_ROLE = new Set([
+const DISALLOW_USER_EDIT_ITSELF_ROLE: readonly UserRole[] = [
   UserRole.Owner,
   UserRole.Admin,
   UserRole.Staff,
   UserRole.Moderator,
-])
+]
 
 const app = useNuxtApp()
 const { t } = useI18n()
@@ -42,7 +42,7 @@ const opts = computed(() =>
     .map((item) => {
       const attrs: HTMLAttributes & InputHTMLAttributes = {}
       if (
-        (session.user?.id === detail.value.id && DISALLOW_USER_EDIT_ITSELF_ROLE.has(item.value)) // prevent self from removing its priv
+        (session.user?.id === detail.value.id && DISALLOW_USER_EDIT_ITSELF_ROLE.includes(item.value)) // prevent self from removing its priv
         || !isRoleEditable(session.role, item.value)
       ) {
         attrs.disabled = true
@@ -271,23 +271,36 @@ de-DE:
           <t-multi-checkbox v-model="detail.roles" size="sm" :options="opts" />
         </dd>
       </div>
+
+      <div class="striped">
+        <dt class="striped-dt">
+          {{ t("actions") }}
+        </dt>
+        <dd class="striped-text">
+          <t-nuxt-link-button variant="secondary" size="sm" :to="{ name: 'admin-users-id-stats', params: { id: route.params.id } }">
+            ({{ t(localeKey.root.global.wip.__path__) }}) Edit Statistics
+          </t-nuxt-link-button>
+        </dd>
+      </div>
     </dl>
-    <button
-      class="btn btn-shadow"
-      :class="{
-        'loading': status === Status.Pending,
-        'btn-success': status === Status.Succeed,
-        'btn-error': status === Status.Errored,
-      }"
-      @click="save"
-    >
-      {{ t("save-btn") }}
-      <Icon
-        v-if="status !== Status.Pending"
-        :name="icon[status]"
-        class="w-5 h-5"
-      />
-    </button>
-    <button class="btn" @click="integrity" />
+    <div class="divider" />
+    <div class="flex">
+      <button
+        class="btn btn-shadow btn-primary ms-auto"
+        :class="{
+          'loading': status === Status.Pending,
+          'btn-success': status === Status.Succeed,
+          'btn-error': status === Status.Errored,
+        }"
+        @click="save"
+      >
+        {{ t("save-btn") }}
+        <Icon
+          v-if="status !== Status.Pending"
+          :name="icon[status]"
+          class="w-5 h-5"
+        />
+      </button>
+    </div>
   </div>
 </template>
