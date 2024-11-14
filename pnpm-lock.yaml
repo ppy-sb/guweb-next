@@ -5586,6 +5586,17 @@ packages:
       pkg-up: 2.0.0
     dev: false
 
+  /debuggler@1.0.0(debug@4.3.7):
+    resolution: {integrity: sha512-nq77mTAwWb0mXfhacMP0mQK4qlsTbNYgqM2gzdUR8zT9x7H8eV/GTklxljKnuBkKAdoLsrghTMq/UcrSzV0Etw==}
+    engines: {node: '>=7.6.0'}
+    peerDependencies:
+      debug: 3.x
+    dependencies:
+      caller-path: 2.0.0
+      debug: 4.3.7
+      pkg-up: 2.0.0
+    dev: false
+
   /decode-uri-component@0.2.2:
     resolution: {integrity: sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ==}
     engines: {node: '>=0.10'}
@@ -8160,6 +8171,14 @@ packages:
     dependencies:
       mlly: 1.7.3
       pkg-types: 1.2.1
+
+  /locate-path@2.0.0:
+    resolution: {integrity: sha512-NCI2kiDkyR7VeEKm27Kda/iQHyKJe1Bu0FlTbYp3CqJu+9IFe9bLyAjMxf5ZDDbEg+iMPzB5zYyUTSm8wVTKmA==}
+    engines: {node: '>=4'}
+    dependencies:
+      p-locate: 2.0.0
+      path-exists: 3.0.0
+    dev: false
 
   /locate-path@2.0.0:
     resolution: {integrity: sha512-NCI2kiDkyR7VeEKm27Kda/iQHyKJe1Bu0FlTbYp3CqJu+9IFe9bLyAjMxf5ZDDbEg+iMPzB5zYyUTSm8wVTKmA==}
