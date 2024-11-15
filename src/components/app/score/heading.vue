@@ -3,7 +3,7 @@
 import type { inferRouterOutputs } from '@trpc/server'
 import { Mode, Rank } from '~/def'
 import type { RankingSystem } from '~/def/common'
-import type { ManiaHitCount, StandardHitCount } from '~/def/score'
+import { type ManiaHitCount, StableMod, type StandardHitCount } from '~/def/score'
 import type { AppRouter } from '~/server/trpc/routers'
 
 type RouterOutput = inferRouterOutputs<AppRouter>
@@ -61,7 +61,7 @@ de-DE:
 <template>
   <div v-if="beatmapIsVisible(score.beatmap)" class="flex flex-col items-stretch gap-4 md:flex-row">
     <div class="w-full md:max-w-32 grow">
-      <img :src="score.beatmap.beatmapset.assets.list" class="mx-auto rounded-lg">
+      <img :src="score.beatmap.beatmapset.assets.list" class="mx-auto rounded-lg w- 48 md:w-auto">
     </div>
     <div class="whitespace-pre-wrap">
       <i18n-t keypath="title" tag="p" class="font-light">
@@ -79,7 +79,7 @@ de-DE:
           </span>
         </template>
       </i18n-t>
-      <i18n-t keypath="map" tag="p" class="mt-4 font-light">
+      <i18n-t keypath="map" tag="p" class="mt-2 font-light">
         <template #version>
           <nuxt-link-locale
             class="text-xl font-semibold g-link-style"
@@ -94,10 +94,10 @@ de-DE:
       </i18n-t>
     </div>
   </div>
-  <i18n-t keypath="play" tag="div" class="flex items-center pt-4 font-light gap-x-1">
+  <i18n-t keypath="play" tag="div" class="items-center inline font-light gap-x-1">
     <template #player>
       <nuxt-link-locale
-        class="inline-flex gap-1"
+        class="space-x-1"
         :to="{
           name: 'user-handle',
           params: {
@@ -105,10 +105,10 @@ de-DE:
           },
         }"
       >
-        <img class="object-cover mask mask-squircle" width="30" :src="score.user.avatarSrc" :alt="score.user.name">
-        <div class="text-xl font-bold g-link-style">
+        <img class="inline object-cover align-top mask mask-squircle" width="30" :src="score.user.avatarSrc" :alt="score.user.name">
+        <span class="text-xl font-bold g-link-style">
           {{ score.user.name }}
-        </div>
+        </span>
       </nuxt-link-locale>
     </template>
     <template #time>
@@ -117,87 +117,93 @@ de-DE:
       </span>
     </template>
   </i18n-t>
-  <div class="divider" />
-  <div class="flex flex-col items-center mt-4 md:flex-row">
-    <div class="grid items-baseline w-full grid-cols-3 md:grid-cols-6 gap-y-3 gap-x-1">
-      <div class="col-span-2 font-mono text-4xl text-end md:col-span-5">
-        {{ scoreFmt(score.score) }}
+  <div class="mt-0 divider" />
+  <div class="grid items-baseline w-full grid-cols-3 md:grid-cols-8 gap-y-3 gap-x-1">
+    <div class="order-1 col-span-2 font-mono text-4xl text-end md:col-span-5">
+      {{ scoreFmt(score.score) }}
+    </div>
+
+    <template v-if="hasRuleset(score.mode, score.ruleset) && hasRankingSystem(score.mode, score.ruleset, Rank.PPv2)">
+      <span class="order-1 col-span-2 font-mono text-2xl md:col-span-5 text-end">{{ scoreFmt(score[Rank.PPv2].pp) }}</span>
+      <span class="order-1 text-xl">{{ $t(localeKey.root.global.pp.__path__) }}</span>
+    </template>
+
+    <div class="relative order-1 h-full col-span-3 md:order-2 md:col-start-7 md:col-span-2 md:row-start-1 md:row-span-9">
+      <div class="inset-0 flex flex-col md:absolute">
+        <div class="mt-auto" />
+        <div class="mx-auto text-8xl">
+          {{ score.grade }}
+        </div>
+        <span v-if="score.mods.length" class="block mt-2 space-x-4 lg:mt-8 tooltip tooltip-primary" :data-tip="score.mods.map(m => StableMod[m]).join(', ')">
+          <app-mod v-for="mod in score.mods" :key="mod" :mod="mod" class="w-8 h-8 opacity-80" />
+        </span>
+        <div class="mb-auto" />
       </div>
-
-      <template v-if="hasRuleset(score.mode, score.ruleset) && hasRankingSystem(score.mode, score.ruleset, Rank.PPv2)">
-        <span class="col-span-2 font-mono text-2xl md:col-span-5 text-end">{{ scoreFmt(score[Rank.PPv2].pp) }}</span>
-        <span class="text-xl">{{ $t(localeKey.root.global.pp.__path__) }}</span>
-      </template>
-
-      <div class="col-span-3 -my-2 divider md:col-span-6" />
-
-      <template v-if="haveManiaHitCounts(score)">
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[300]) }}</span>
-        <span>x 300</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit.max) }}</span>
-        <span>x 300P</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[200]) }}</span>
-        <span>x 200</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[100]) }}</span>
-        <span>x 100</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[50]) }}</span>
-        <span>x 50</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit.miss) }}</span>
-        <span>x miss</span>
-      </template>
-
-      <template v-else-if="haveStandardHitCounts(score)">
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[300]) }}</span>
-        <span>x 300</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit.geki) }}</span>
-        <span>x geki</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[100]) }}</span>
-        <span>x 100</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit.katu) }}</span>
-        <span>x katu</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit[50]) }}</span>
-        <span>x 50</span>
-
-        <span />
-        <span class="font-mono text-4xl text-end">{{ scoreFmt(score.hit.miss) }}</span>
-        <span>x miss</span>
-      </template>
-
-      <div class="col-span-3 -my-2 md:col-span-6 divider" />
-
-      <span class="text-xl text-nowrap">{{ $t(localeKey.root.global.accuracy.__path__) }}</span>
-      <span class="font-mono text-2xl text-end">{{ score.accuracy }}</span>
-      <span class="text-lg">%</span>
-
-      <span class="text-xl text-nowrap">{{ $t(localeKey.root.global['max-combo'].__path__) }}</span>
-      <span class="font-mono text-2xl text-end">{{ score.maxCombo }}</span>
-      <span class="text-lg">x</span>
     </div>
-    <div class="flex min-w-54">
-      <span class="mx-auto text-8xl">
-        {{ score.grade }}
-      </span>
-    </div>
+
+    <div class="order-2 col-span-3 -my-2 divider md:col-span-6" />
+
+    <template v-if="haveManiaHitCounts(score)">
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[300]) }}</span>
+      <span class="order-2">x 300</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit.max) }}</span>
+      <span class="order-2">x 300P</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[200]) }}</span>
+      <span class="order-2">x 200</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[100]) }}</span>
+      <span class="order-2">x 100</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[50]) }}</span>
+      <span class="order-2">x 50</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit.miss) }}</span>
+      <span class="order-2">x miss</span>
+    </template>
+
+    <template v-else-if="haveStandardHitCounts(score)">
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[300]) }}</span>
+      <span class="order-2">x 300</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit.geki) }}</span>
+      <span class="order-2">x geki</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[100]) }}</span>
+      <span class="order-2">x 100</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit.katu) }}</span>
+      <span class="order-2">x katu</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit[50]) }}</span>
+      <span class="order-2">x 50</span>
+
+      <span class="order-2" />
+      <span class="order-2 font-mono text-4xl text-end">{{ scoreFmt(score.hit.miss) }}</span>
+      <span class="order-2">x miss</span>
+    </template>
+
+    <div class="order-2 col-span-3 -my-2 md:col-span-6 divider" />
+
+    <span class="order-2 text-xl text-nowrap">{{ $t(localeKey.root.global.accuracy.__path__) }}</span>
+    <span class="order-2 font-mono text-2xl text-end">{{ score.accuracy }}</span>
+    <span class="order-2 text-lg">%</span>
+
+    <span class="order-2 text-xl text-nowrap">{{ $t(localeKey.root.global['max-combo'].__path__) }}</span>
+    <span class="order-2 font-mono text-2xl text-end">{{ score.maxCombo }}</span>
+    <span class="order-2 text-lg">x</span>
   </div>
   <div class="divider" />
   <div>

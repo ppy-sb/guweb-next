@@ -44,7 +44,3 @@ const icons: Record<typeof StableMod[keyof typeof StableMod], string> = {
 <template>
   <icon :name="icons[props.mod]" />
 </template>
-
-<style scoped>
-
-</style>
