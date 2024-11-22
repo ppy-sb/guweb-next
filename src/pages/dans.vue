@@ -65,7 +65,7 @@ zh-CN:
 </i18n>
 
 <template>
-  <section class="container mx-auto custom-container space-y-8">
+  <section class="container mx-auto space-y-8 custom-container">
     <form :action="useRequestURL().href" method="get" @submit.prevent="refresh()">
       <label for="keyword" class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">{{ t('search') }}</label>
       <div class="relative">
@@ -82,19 +82,19 @@ zh-CN:
       </div>
     </form>
 
-    <div v-for="item in data" :key="item.id" class="border-l-4 border-primary ps-3 w-full relative">
+    <div v-for="item in data" :key="item.id" class="relative w-full border-l-4 border-primary ps-3">
       <nuxt-link-locale class="text-3xl link" :to="{ name: 'dan-compose', query: { id: item.id } }">
         {{ item.name }}
       </nuxt-link-locale>
       <p class="whitespace-pre-wrap">
         {{ item.description }}
       </p>
-      <div class="collapse collapse-plus p-0">
+      <div class="p-0 collapse collapse-plus">
         <input type="checkbox">
-        <div class="collapse-title ps-0 text-xl font-medium">
+        <div class="text-xl font-medium collapse-title ps-0 link">
           {{ t('detail') }}
         </div>
-        <div class="collapse-content p-0 m-0 space-y-4 leading-relaxed overflow-auto">
+        <div class="p-0 m-0 space-y-4 overflow-auto leading-relaxed collapse-content">
           <button class="btn" @click="lazyLoadScore(item)">
             {{ t('load-qualified-scores') }}
           </button>
@@ -108,8 +108,13 @@ zh-CN:
               <p class="my-3">
                 <span class="text-sm font-bold">{{ t('qf-scores') }}</span>
               </p>
-              <div class="overflow-x-auto border rounded-md">
-                <table class="table table-sm table-zebra">
+              <div class="relative overflow-x-auto border rounded-md border-base-300">
+                <table
+                  class="table transition-all table-sm table-zebra"
+                  :class="{
+                    'opacity-30 saturate-50 blur-md': getLoadingState(item) === State.Loading,
+                  }"
+                >
                   <thead>
                     <tr>
                       <th scope="col">
@@ -162,15 +167,15 @@ zh-CN:
                       </td>
                     </tr>
                   </tbody>
-                  <div
-                    class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur-sm backdrop-blur"
-                    :class="{
-                      'opacity-100 !blur-none': getLoadingState(item) === State.Loading,
-                    }"
-                  >
-                    <div class="m-auto loading" />
-                  </div>
                 </table>
+                <div
+                  class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur"
+                  :class="{
+                    'opacity-100 blur-none': getLoadingState(item) === State.Loading,
+                  }"
+                >
+                  <div class="m-auto loading" />
+                </div>
               </div>
             </template>
           </div>
