@@ -1,4 +1,4 @@
-import type { Feature } from '~/def/features'
+import { Feature } from '~/def/features'
 import { UserRole } from '~/def/user'
 
 export { modes, rulesets, rankingSystems, leaderboardRankingSystems } from '~/def'
@@ -25,4 +25,6 @@ export {
 export type Id = number
 export type ScoreId = bigint
 
-export const features = new Set<Feature>([])
+export const features = new Set<Feature>([
+  Feature.Clan,
+])
