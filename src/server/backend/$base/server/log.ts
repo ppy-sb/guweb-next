@@ -1,11 +1,13 @@
 import { resolve } from 'node:path'
 import { access, rename, writeFile } from 'node:fs/promises'
 import fs from 'node:fs'
+import fsR from 'fs-reverse'
 import winston from 'winston'
 import { type Id } from '..'
 import { Monitored } from './@extends'
 import { Logger, disposeAll, observe } from '$base/logger'
 import { type UserCompact } from '~/def/user'
+import { LogLevel } from '~/def'
 
 export class LogProvider implements Monitored {
   [Monitored.status]: Monitored[typeof Monitored.status] = [Monitored.Status.Up]
@@ -15,39 +17,26 @@ export class LogProvider implements Monitored {
     LogProvider.setupFileTransports()
   }
 
-  async get(last: number) {
+  async get(opt: Partial<{ last: number; loglevel: LogLevel }>) {
+    const {
+      last = 100,
+      loglevel = LogLevel.warn,
+    } = opt
     try {
       await access(LogProvider.combined, fs.constants.R_OK)
-      return LogProvider.readLastNLinesFromFile(LogProvider.combined, last)
-        .then(lines => lines.map((line) => {
-          if (!line.trim()) {
-            return undefined
-          }
-          try {
-            const v = JSON.parse(line)
-            v.timestamp = new Date(v.timestamp)
-            return v
-          }
-          catch (e) {
-            return {
-              level: 'Worst',
-              label: 'Unknown cause, recorded bad log',
-              backend: 'Log',
-              message: line,
-              timestamp: new Date(0),
-            }
-          }
-        }).filter(TSFilter)) as Promise<{
-          [x: string]: unknown
-          level: string
-          label: string
-          backend?: string
-          timestamp: Date
-          message?: string
-          fix?: string
-        }[]>
+      return await LogProvider.readLastNLinesFromFile(LogProvider.combined, last, loglevel)
+        .then(lines => lines.filter(TSFilter)) as {
+        [x: string]: unknown
+        level: string
+        label: string
+        backend?: string
+        timestamp: Date
+        message?: string
+        fix?: string
+      }[]
     }
     catch (e) {
+      console.error(e)
       this[Monitored.status] = [Monitored.Status.Degraded]
       throw e
     }
@@ -90,27 +79,30 @@ export class LogProvider implements Monitored {
     observe(new winston.transports.File({ ...LogProvider.sharedBaseCfg, filename: LogProvider.combined }))
   }
 
-  static async readLastNLinesFromFile(filePath: string, n: number): Promise<string[]> {
-    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8', highWaterMark: 1024 * 1024 })
-    const buffer: string[] = []
-    const lastNLines: string[] = []
+  static async readLastNLinesFromFile(filePath: string, n: number, level: LogLevel): Promise<Record<any, any>[]> {
+    const fileStream = fsR(filePath, { encoding: 'utf8', highWaterMark: 1024 * 1024, matcher: '\n' }) as fs.ReadStream
 
-    for await (const chunk of fileStream) {
-      const lines = chunk.split(/\r?\n/)
-      const tail = lines.pop()
-      if (tail) {
-        buffer.unshift(tail)
-      }
-      lastNLines.push(...lines.reverse())
-      if (lastNLines.length >= n) {
-        break
-      }
-    }
+    const matched = await new Promise<Array<Record<any, any> & { level: LogLevel }>>((resolve) => {
+      const matched: Array<Record<any, any> & { level: LogLevel }> = []
+      fileStream.on('data', (line) => {
+        try {
+          const json = JSON.parse(line as string)
+          if (LogLevel[json.level as keyof typeof LogLevel] <= level) {
+            matched.push(json)
+          }
+          if (matched.length >= n) {
+            resolve(matched)
+          }
+        }
+        catch {}
+      })
+      fileStream.on('end', () => {
+        resolve(matched)
+      })
+    })
 
-    if (lastNLines.length < n) {
-      lastNLines.push(...buffer)
-    }
+    fileStream.destroy()
 
-    return lastNLines.slice(0, n)
+    return matched
   }
 }

@@ -7,6 +7,17 @@ import type {
   ScoreRankingSystem,
 } from './common'
 
+export enum LogLevel {
+  unknown = -1,
+  error = 0,
+  warn = 1,
+  info = 2,
+  http = 3,
+  verbose = 4,
+  debug = 5,
+  silly = 6,
+}
+
 export enum Lang {
   enGB = 'en-GB',
   zhCN = 'zh-CN',
