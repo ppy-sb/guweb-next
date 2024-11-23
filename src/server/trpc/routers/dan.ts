@@ -1,13 +1,14 @@
 import { any, number, object, string } from 'zod'
-import { router as _router, publicProcedure } from '../trpc'
-import { staffProcedure } from '../middleware/role'
 import { type DanProvider as BaseDanProvider } from '../../backend/$base/server'
-import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
-import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, type Requirement, type RequirementCondBinding } from '~/def/dan'
+import { staffProcedure } from '../middleware/role'
+import { router as _router, publicProcedure } from '../trpc'
 import { validateUsecase } from '~/common/utils/dan'
+import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, type Requirement } from '~/def/dan'
+import { Feature } from '~/def/features'
+import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
 
 export const router = _router({
-  get: publicProcedure
+  get: withFeatureFlag(publicProcedure, Feature.Dan)
     .input(string())
     .query(async ({ input }) => {
       const res = await dans.get(DanProvider.stringToId(input))
@@ -21,7 +22,7 @@ export const router = _router({
       }
     }),
 
-  delete: staffProcedure
+  delete: withFeatureFlag(staffProcedure, Feature.Dan)
     .input(string())
     .mutation(async ({ input }) => await dans.delete(DanProvider.stringToId(input))),
 
@@ -43,7 +44,7 @@ export const router = _router({
       })) satisfies DatabaseDan<string>[]
     }),
 
-  save: staffProcedure
+  save: withFeatureFlag(staffProcedure, Feature.Dan)
     .input(
       any()
         .refine((i): i is DatabaseDan<string> => !!validateUsecase(i as DatabaseDan<string>))
@@ -77,30 +78,32 @@ export const router = _router({
   //     return dans.scores(input)
   //   }),
 
-  userRule: publicProcedure.input(any().refine((i): i is Dan => validateUsecase(i))).query(async ({ input }) => {
-    const result = await dans.runCustomDan(input)
-    return result.map(i => ({
-      ...i,
-      scores: i.scores.map(s => ({
-        ...s,
-        score: {
-          ...s.score,
-          id: ScoreProvider.scoreIdToString(s.score.id),
-        },
-      })),
-    }))
-  }),
+  userRule: withFeatureFlag(publicProcedure, Feature.Dan)
+    .input(any().refine((i): i is Dan => validateUsecase(i))).query(async ({ input }) => {
+      const result = await dans.runCustomDan(input)
+      return result.map(i => ({
+        ...i,
+        scores: i.scores.map(s => ({
+          ...s,
+          score: {
+            ...s.score,
+            id: ScoreProvider.scoreIdToString(s.score.id),
+          },
+        })),
+      }))
+    }),
 
-  getQualifiedScores: publicProcedure.input(string()).query(async ({ input }) => {
-    const result = await dans.getQualifiedScores(DanProvider.stringToId(input))
-    return result.map(i => ({
-      ...i,
-      scores: i.scores.map(s => ({
-        ...s,
-        score: mapId(s.score, ScoreProvider.scoreIdToString),
-        player: mapId(s.player, DanProvider.idToString),
-        beatmap: mapId(s.beatmap, DanProvider.idToString),
-      })),
-    })) satisfies BaseDanProvider.RequirementQualifiedScore<string, string>[] as BaseDanProvider.RequirementQualifiedScore<string, string>[]
-  }),
+  getQualifiedScores: withFeatureFlag(publicProcedure, Feature.Dan)
+    .input(string()).query(async ({ input }) => {
+      const result = await dans.getQualifiedScores(DanProvider.stringToId(input))
+      return result.map(i => ({
+        ...i,
+        scores: i.scores.map(s => ({
+          ...s,
+          score: mapId(s.score, ScoreProvider.scoreIdToString),
+          player: mapId(s.player, DanProvider.idToString),
+          beatmap: mapId(s.beatmap, DanProvider.idToString),
+        })),
+      })) satisfies BaseDanProvider.RequirementQualifiedScore<string, string>[] as BaseDanProvider.RequirementQualifiedScore<string, string>[]
+    }),
 })
