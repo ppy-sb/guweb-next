@@ -2,7 +2,7 @@ export enum Feature {
   // SearchUser,
   // SearchBeatmap,
   // SearchBeatmapset,
-  // AdvancedBeatmapSearch,
+  Dan,
   Clan,
   StableUsername,
   RankHistory,
