@@ -55,7 +55,12 @@ export const client = lazySingleton(() => {
       }
     }
     else {
-      logger.error(err)
+      if ('code' in err && err.code === 'ECONNREFUSED') {
+        logger.error('redis connection refused.')
+      }
+      else {
+        logger.error(err)
+      }
       lastErr.set(err.stack || err.message, { err, lastReportedAt: Date.now(), debounce: 1000, count: 0, adaptiveRatio: 1.3 })
     }
   })

@@ -1,11 +1,14 @@
 import { any, array, boolean, object, record, string, union } from 'zod'
-import { router as _router } from '../trpc'
-import { staffProcedure } from '../middleware/role'
 import { optionalUserProcedure } from '../middleware/optional-user'
+import { staffProcedure } from '../middleware/role'
 import { userProcedure } from '../middleware/user'
-import { type ArticleProvider as BaseArticleProvider } from '$base/server/article'
+import { router as _router } from '../trpc'
 import { ArticleProvider, articles } from '~/server/singleton/service'
 import { GucchoError } from '~/def/messages'
+import { type ArticleProvider as BaseArticleProvider } from '$base/server/article'
+import { Logger } from '$base/logger'
+
+const logger = Logger.child({ label: 'article' })
 
 export const router = _router({
   get: userProcedure
@@ -85,13 +88,27 @@ export const router = _router({
       }),
       dynamic: boolean(),
     }))
-    .mutation(({ input, ctx }) => articles.save(Object.assign(input, { user: ctx.user }))),
+    .mutation(async ({ input, ctx }) => {
+      const r = await articles.save(Object.assign(input, { user: ctx.user }))
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> saved article ${input.slug}`, {
+        slug: input.slug,
+        user: pick(ctx.user, ['id', 'name', 'roles']),
+      })
+      return r
+    }),
 
   delete: staffProcedure
     .input(object({
       slug: string().trim(),
     }))
-    .mutation(({ input, ctx }) => articles.delete(Object.assign(input, { user: ctx.user }))),
+    .mutation(async ({ input, ctx }) => {
+      const r = await articles.delete(Object.assign(input, { user: ctx.user }))
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> deleted article ${input.slug}`, {
+        slug: input.slug,
+        user: ctx.user,
+      })
+      return r
+    }),
 
   localSlugs: staffProcedure
     .input(string().trim().optional())

@@ -90,41 +90,27 @@ export class LogProvider implements Monitored {
     observe(new winston.transports.File({ ...LogProvider.sharedBaseCfg, filename: LogProvider.combined }))
   }
 
-  static readLastNLinesFromFile(filePath: string, n: number): Promise<string[]> {
-    return new Promise<string[]>((resolve, reject) => {
-      const lines: string[] = []
-      const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' })
-      let lineCount = 0
-      const lastNLines: string[] = []
+  static async readLastNLinesFromFile(filePath: string, n: number): Promise<string[]> {
+    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8', highWaterMark: 1024 * 1024 })
+    const buffer: string[] = []
+    const lastNLines: string[] = []
 
-      fileStream.on('data', (data: string) => {
-        const dataLines = data.split(/\r?\n/)
+    for await (const chunk of fileStream) {
+      const lines = chunk.split(/\r?\n/)
+      const tail = lines.pop()
+      if (tail) {
+        buffer.unshift(tail)
+      }
+      lastNLines.push(...lines.reverse())
+      if (lastNLines.length >= n) {
+        break
+      }
+    }
 
-        for (let i = dataLines.length - 1; i >= 0; i--) {
-          const line = dataLines[i]
-          lineCount++
+    if (lastNLines.length < n) {
+      lastNLines.push(...buffer)
+    }
 
-          if (lineCount > n) {
-            break
-          }
-
-          lastNLines.unshift(line)
-        }
-      })
-
-      fileStream.on('end', () => {
-        if (lineCount < n) {
-          lines.push(...lastNLines)
-        }
-        else {
-          lines.push(...lastNLines.slice(0, n))
-        }
-        resolve(lines)
-      })
-
-      fileStream.on('error', (err: Error) => {
-        reject(err)
-      })
-    })
+    return lastNLines.slice(0, n)
   }
 }

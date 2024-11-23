@@ -6,7 +6,6 @@ const { combine, timestamp, json, printf } = format
 
 export const Logger = createLogger({
   defaultMeta: {
-    backend: 'base',
   },
   format: combine(
     timestamp(),

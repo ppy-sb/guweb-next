@@ -213,7 +213,8 @@ export const router = _router({
 
   register: _router({
     sendEmailCode: sessionProcedure
-      .input(string().email()).mutation(async ({ ctx, input }) => {
+      .input(string().email())
+      .mutation(async ({ ctx, input }) => {
         await ctx.session.getBinding() ?? throwGucchoError(GucchoError.SessionNotFound)
 
         // check if email is taken
@@ -251,6 +252,7 @@ export const router = _router({
             } satisfies Param['content']
           ),
         })
+        logger.info(`new user validating email,otp sent to ${input}.`, { email: input })
       }),
 
     createAccount: sessionProcedure
@@ -271,6 +273,8 @@ export const router = _router({
           passwordMd5,
           email: rec.email,
         })
+
+        logger.info(`user ${user.safeName}<${user.id}> registered.`, { user: pick(user, ['id', 'name']) })
 
         await ctx.session.update({ userId: UserProvider.idToString(user.id) })
 
@@ -316,6 +320,8 @@ export const router = _router({
             } satisfies Param['content']
          ),
        })
+
+       logger.info(`user ${user.safeName}<${user.id}> requested to change password. OTP sent to ${input}.`, { user: pick(user, ['id', 'name']), email: input })
       }),
 
     changePassword: sessionProcedure
@@ -342,6 +348,8 @@ export const router = _router({
         const user = await users.getByEmail(rec.email, { scope: Scope.Self })
 
         await users.changePasswordNoCheck(user, input.password)
+
+        logger.info(`user ${user.safeName}<${user.id}> changed password.`, { user: pick(user, ['id', 'name']) })
 
         // background jobs
         mailToken.deleteAll(rec.email).catch(e => logger.error({ message: `failed to delete mail token: ${e.message}` }))

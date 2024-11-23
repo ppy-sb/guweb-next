@@ -1,12 +1,15 @@
 import { any, array, nativeEnum, number, object, string, tuple } from 'zod'
 import { zodHandle, zodMode, zodRuleset } from '../../shapes'
 import { router as log } from './log'
+import { Logger } from '$base/logger'
 import { UserProvider, admin } from '~/server/singleton/service'
 import { staffProcedure } from '~/server/trpc/middleware/role'
 import { router as _router } from '~/server/trpc/trpc'
 import { UserRole } from '~/def/user'
 import { CountryCode } from '~/def/country-code'
 import { type ModeRulesetScoreStatistic } from '~/def/statistics'
+
+const logger = Logger.child({ label: 'admin' })
 
 const searchParam = object({
   id: string().trim(),
@@ -76,6 +79,8 @@ export const router = _router({
             id: newVal.id ? UserProvider.stringToId(newVal.id) : undefined,
           },
         )
+
+        logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> updated user detail.`, { user: pick(ctx.user, ['id', 'name']), newVal })
 
         return mapId(res, UserProvider.idToString)
       }),

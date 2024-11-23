@@ -10,7 +10,7 @@ import { UserProvider, sessions, users } from '~/server/singleton/service'
 import { Constant } from '~/server/common/constants'
 import { Logger } from '$base/logger'
 
-const logger = Logger.child({ label: 'session', backend: 'transport', transport: 'trpc' })
+const logger = Logger.child({ label: 'session' })
 
 export const router = _router({
   login: publicProcedure
@@ -23,8 +23,12 @@ export const router = _router({
     )
     .mutation(async ({ input: { handle, md5HashedPassword, persist }, ctx }) => {
       try {
+        const ip = getRequestIP(ctx.h3Event, { xForwardedFor: true }) ?? '0.0.0.0'
+        const UA = getHeader(ctx.h3Event, 'User-Agent')
+
         const [ok, user] = await users.testPassword({ handle }, md5HashedPassword)
         if (!ok) {
+          logger.info(`user ${user.safeName}<${user.id}> attempted to login with incorrect password from ${ip}, UA: ${UA}.`, { user: pick(user, ['id', 'name']), ip })
           throwGucchoError(GucchoError.IncorrectPassword)
         }
 
@@ -46,6 +50,7 @@ export const router = _router({
         if (persist) {
           setCookie(ctx.h3Event, Constant.Persist, 'yes', opt)
         }
+        logger.info(`user ${user.safeName}<${user.id}> logged in from ${ip}, UA: ${UA}.`, { user: pick(user, ['id', 'name']), ip })
         return {
           user: mapId(user, UserProvider.idToString),
         }
@@ -87,9 +92,15 @@ export const router = _router({
         user: null,
       }
     }),
-  destroy: pSession.mutation(({ ctx }) => {
-    deleteCookie(ctx.h3Event, Constant.SessionLabel)
-    deleteCookie(ctx.h3Event, Constant.Persist)
-    return sessions.destroy(ctx.session.id)
-  }),
+  destroy: pSession
+    .mutation(async ({ ctx }) => {
+      deleteCookie(ctx.h3Event, Constant.SessionLabel)
+      deleteCookie(ctx.h3Event, Constant.Persist)
+
+      const maybeUser = await ctx.session.getBinding()
+
+      const r = await sessions.destroy(ctx.session.id)
+      logger.info(`${maybeUser ? `user <${maybeUser.userId}> ` : ''}destroyed session ${ctx.session.id}.`, { maybeUser, id: ctx.session.id })
+      return r
+    }),
 })

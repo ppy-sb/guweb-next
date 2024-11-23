@@ -5,7 +5,7 @@ import { GucchoError } from '~/def/messages'
 import { settings } from '$active/dynamic-settings'
 import { extractLocationSettings, extractSettingValidators } from '$base/@define-setting'
 import { type MailTokenProvider } from '$base/server'
-import { Mode, Ruleset } from '~/def'
+import { Mode, Relationship, Ruleset } from '~/def'
 import { CountryCode } from '~/def/country-code'
 import { Mail } from '~/def/mail'
 import { DynamicSettingStore, Scope } from '~/def/user'
@@ -17,7 +17,6 @@ import { Logger } from '$base/logger'
 
 const logger = Logger.child({ label: 'me' })
 
-// const verifiedEmail = new Map<string, Set<string>>()
 export const router = _router({
   settings: pUser.query(async ({ ctx }) => {
     const result = await users.getSettings({
@@ -38,8 +37,10 @@ export const router = _router({
       extractSettingValidators(
         extractLocationSettings(DynamicSettingStore.Server, settings)
       )
-    ).mutation(({ ctx, input }) => {
-      return users.setDynamicSettings(ctx.user, input)
+    ).mutation(async ({ ctx, input }) => {
+      const result = await users.setDynamicSettings(ctx.user, input)
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> updated dynamic settings.`, { user: pick(ctx.user, ['id', 'name']), input })
+      return result
     }),
   }),
 
@@ -53,6 +54,7 @@ export const router = _router({
       const result = await users.changeUserpage?.(ctx.user, {
         profile: input.profile,
       })
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> updated user page.`, { user: pick(ctx.user, ['id', 'name']) })
       return result
     }),
 
@@ -99,13 +101,16 @@ export const router = _router({
             { serverName } satisfies Param['subject']
           ),
         })
+        logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> requested to change email to ${email}.`, { user: pick(ctx.user, ['id', 'name']) })
         return 'otp'
       }),
 
     changeWithToken: pUser
-      .input(zodEmailValidation).mutation(async ({ ctx, input }) => {
+      .input(zodEmailValidation)
+      .mutation(async ({ ctx, input }) => {
         const rec = await mailToken.get(input) ?? throwGucchoError(GucchoError.EmailTokenNotFound)
         const result = await users.changeEmail(ctx.user, rec.email)
+        logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> changed email to ${rec.email}.`, { user: pick(ctx.user, ['id', 'name']) })
         mailToken.deleteAll(rec.email).catch(e => logger.error(e))
         return result
       }),
@@ -126,6 +131,8 @@ export const router = _router({
     .mutation(async ({ ctx, input }) => {
       const result = await users.changeSettings(ctx.user, input) ?? throwGucchoError(GucchoError.UpdateUserSettingsFailed)
 
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> updated settings.`, { user: pick(ctx.user, ['id', 'name']) })
+
       ctx.user = result
       return mapId(ctx.user, UserProvider.idToString)
     }),
@@ -133,8 +140,11 @@ export const router = _router({
   changeAvatar: pUser
     .input(object({
       avatar: instanceof_(Uint8Array),
-    })).mutation(async ({ ctx, input }) => {
-      return await users.changeAvatar(ctx.user, input.avatar)
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const r = await users.changeAvatar(ctx.user, input.avatar)
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> changed avatar.`, { user: pick(ctx.user, ['id', 'name']) })
+      return r
     }),
 
   updatePassword: pUser
@@ -150,6 +160,8 @@ export const router = _router({
         input.oldPassword,
         input.newPassword,
       )
+
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> updated password.`, { user: pick(ctx.user, ['id', 'name']) })
 
       return mapId(result, UserProvider.idToString)
     }),
@@ -213,6 +225,7 @@ export const router = _router({
           targetUser,
           type: input.type,
         })
+        logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> removed relationship [${Relationship[input.type]}] with ${input.target}.`, { user: pick(ctx.user, ['id', 'name']) })
         return true
       }
       catch (err: any) {
@@ -242,6 +255,7 @@ export const router = _router({
           targetUser,
           type: input.type,
         })
+        logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> added relationship [${Relationship[input.type]}] with ${input.target}.`, { user: pick(ctx.user, ['id', 'name']) })
         return true
       }
       catch (err: any) {
@@ -269,15 +283,18 @@ export const router = _router({
 
   kickSession: pUser.input(object({
     session: string(),
-  })).mutation(async ({ input, ctx }) => {
-    const target = await sessions.get(input.session)
-    if (!target) {
-      throw new Error('not your session')
-    }
-    const self = await ctx.session.getBinding()
-    if (self?.userId !== target.userId) {
-      throw new Error('not your session')
-    }
-    return await sessions.destroy(input.session)
-  }),
+  }))
+    .mutation(async ({ input, ctx }) => {
+      const target = await sessions.get(input.session)
+      if (!target) {
+        throw new Error('not your session')
+      }
+      const self = await ctx.session.getBinding()
+      if (self?.userId !== target.userId) {
+        throw new Error('not your session')
+      }
+      const r = await sessions.destroy(input.session)
+      logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> kicked session ${input.session}.`, { user: pick(ctx.user, ['id', 'name']) })
+      return r
+    }),
 })

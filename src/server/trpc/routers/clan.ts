@@ -2,6 +2,7 @@ import { nativeEnum, number, object, string } from 'zod'
 import { zodLeaderboardRankingSystem } from '../shapes'
 import { router as _router, publicProcedure as p } from '../trpc'
 import { userProcedure } from './../middleware/user'
+import { Logger } from '$base/logger'
 import { type AbnormalStatus, type LocalBeatmapset, type NormalBeatmapWithMeta, type RankingStatus, type ReferencedBeatmapset } from '~/def/beatmap'
 import { type LeaderboardRankingSystem } from '~/def/common'
 import { Mode, Ruleset } from '~/def'
@@ -9,6 +10,8 @@ import { Paginated, type PaginatedResult } from '~/def/pagination'
 import type { UserCompact } from '~/def/user'
 import { ClanProvider, MapProvider, ScoreProvider, UserProvider, clanProvider } from '~/server/singleton/service'
 import type { RankingSystemScore } from '~/def/score'
+
+const logger = Logger.child({ label: 'clan' })
 
 export const router = _router({
   search: p.input(object({
@@ -89,12 +92,16 @@ export const router = _router({
   }),
   join: userProcedure.input(object({
     id: string(),
-  })).mutation(({ input, ctx }) => {
-    return clanProvider.joinRequest({ userId: ctx.user.id, clanId: ClanProvider.stringToId(input.id) })
+  })).mutation(async ({ input, ctx }) => {
+    const r = await clanProvider.joinRequest({ userId: ctx.user.id, clanId: ClanProvider.stringToId(input.id) })
+    logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> requested to join clan`, { id: input.id, user: pick(ctx.user, ['id', 'name']), status: r })
+    return r
   }),
   leave: userProcedure.input(object({
     id: string(),
-  })).mutation(({ input, ctx }) => {
-    return clanProvider.leaveRequest({ userId: ctx.user.id, clanId: ClanProvider.stringToId(input.id) })
+  })).mutation(async ({ input, ctx }) => {
+    const r = await clanProvider.leaveRequest({ userId: ctx.user.id, clanId: ClanProvider.stringToId(input.id) })
+    logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> requested to leave clan`, { id: input.id, user: pick(ctx.user, ['id', 'name']), status: r })
+    return r
   }),
 })

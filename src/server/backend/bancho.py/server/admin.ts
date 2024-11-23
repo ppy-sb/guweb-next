@@ -168,6 +168,11 @@ export class AdminProvider extends Base<Id> implements Base<Id> {
       ? BanchoPyPrivilege.Any | (priv & BanchoPyPrivilege.Verified)
       : BanchoPyPrivilege.Registered | (priv & BanchoPyPrivilege.Verified)
 
+    logger.info(`Updating user <${query.id}>, fields: ${Object.entries(updateFields).map(([k, v]) => `${k} = ${k === 'password' ? '[deducted]' : v}`).join(', ')}`, {
+      id: query.id,
+      fields: updateFields,
+    })
+
     await this.drizzle
       .update(schema.users)
       .set({
