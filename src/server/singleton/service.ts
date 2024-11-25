@@ -1,6 +1,7 @@
 import {
   AdminProvider,
   ArticleProvider,
+  ChatProvider,
   ClanProvider,
   FileProvider,
   LogProvider,
@@ -20,6 +21,7 @@ import { type Id, type ScoreId } from '$active'
 import {
   type AdminProvider as BaseAdminProvider,
   type ArticleProvider as BaseArticleProvider,
+  type ChatProvider as BaseChatProvider,
   type ClanProvider as BaseClanProvider,
   type FileProvider as BaseFileProvider,
   type MailProvider as BaseMailProvider,
@@ -34,6 +36,7 @@ import {
 
 export const articles: BaseArticleProvider = new ArticleProvider()
 export const admin: BaseAdminProvider<Id> = new AdminProvider()
+export const chats: BaseChatProvider<Id> = new ChatProvider()
 export const files: BaseFileProvider<Id, ScoreId> = new FileProvider()
 export const logs = new LogProvider()
 export const maps: BaseMapProvider<Id, Id> = new MapProvider()
