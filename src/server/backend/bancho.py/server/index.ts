@@ -1,4 +1,5 @@
 export { AdminProvider } from './admin'
+export { ChatProvider } from './chat'
 export { ArticleProvider } from './article'
 export { FileProvider } from './file'
 export { LogProvider } from './log'

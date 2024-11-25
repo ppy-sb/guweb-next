@@ -22,6 +22,7 @@ import type {
 
 const config = _config()
 const drizzle = useDrizzle(schema)
+
 export class ScoreProvider implements Base<bigint, Id> {
   static readonly idToString = idToString
   static readonly stringToId = stringToId
