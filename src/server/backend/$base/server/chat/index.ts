@@ -1,6 +1,7 @@
+import { IdTransformable } from '../@extends'
 import { UserChatContext } from './objects'
 
-export abstract class ChatProvider<Id> {
+export abstract class ChatProvider<Id> extends IdTransformable {
   contexts: Map<Id, UserChatContext<Id>> = new Map()
   getOrCreateUserContext(user: { id: Id }) {
     if (this.contexts.has(user.id)) {
@@ -35,7 +36,17 @@ export abstract class ChatProvider<Id> {
     }
   }
 
-  abstract fetchMessages(from: { id: Id }, to: { id: Id }, opt: { page: number; perPage: number }): Promise<ChatProvider.IPrivateMessage<Id>[]>
+  abstract getMessagesBetween(from: { id: Id }, to: { id: Id }, opt: { page: number; perPage: number }): Promise<ChatProvider.IPrivateMessage<Id>[]>
+
+  serializeIPrivateMessageIds(i: ChatProvider.IPrivateMessage<Id>, P: typeof ChatProvider<unknown>) {
+    return ({
+      id: P.idToString(i.id),
+      from: mapId(i.from, P.idToString),
+      to: mapId(i.to, P.idToString),
+      content: i.content,
+      timestamp: i.timestamp,
+    })
+  }
 }
 
 export namespace ChatProvider {

@@ -1,16 +1,16 @@
-import { type ZodSchema, instanceof as instanceof_, nativeEnum, object, string } from 'zod'
+import { type ZodSchema, instanceof as instanceof_, nativeEnum, number, object, string } from 'zod'
 import { zodEmailValidation, zodHandle, zodRelationType, zodTipTapJSONContent } from '../shapes'
 import { router as _router } from '../trpc'
 import { GucchoError } from '~/def/messages'
 import { settings } from '$active/dynamic-settings'
 import { extractLocationSettings, extractSettingValidators } from '$base/@define-setting'
-import { type MailTokenProvider } from '$base/server'
+import type { ChatProvider as BChat, MailTokenProvider } from '$base/server'
 import { Mode, Relationship, Ruleset } from '~/def'
 import { CountryCode } from '~/def/country-code'
 import { Mail } from '~/def/mail'
 import { DynamicSettingStore, Scope } from '~/def/user'
 import { Constant } from '~/server/common/constants'
-import { UserProvider, UserRelationProvider, mail, mailToken, sessions, userRelations, users } from '~/server/singleton/service'
+import { ChatProvider, UserProvider, UserRelationProvider, chats, mail, mailToken, sessions, userRelations, users } from '~/server/singleton/service'
 import { userProcedure as pUser } from '~/server/trpc/middleware/user'
 import ui from '~~/guccho.ui.config'
 import { Logger } from '$base/logger'
@@ -296,5 +296,17 @@ export const router = _router({
       const r = await sessions.destroy(input.session)
       logger.info(`user ${ctx.user.safeName}<${ctx.user.id}> kicked session ${input.session}.`, { user: pick(ctx.user, ['id', 'name']) })
       return r
+    }),
+
+  recentMessages: pUser
+    .input(
+      object({
+        page: number().min(0).default(0),
+        userId: string(),
+      }))
+    .query(async ({ ctx, input }) => {
+      const to = { id: UserProvider.stringToId(input.userId) }
+      const messages = await chats.getMessagesBetween(ctx.user, to, { page: input.page, perPage: 50 })
+      return messages.map<BChat.IPrivateMessage<string>>(i => chats.serializeIPrivateMessageIds(i, ChatProvider))
     }),
 })

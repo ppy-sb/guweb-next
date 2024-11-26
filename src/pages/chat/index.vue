@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ChatProvider } from '$base/server'
 
+const $app = useNuxtApp()
+
 const allMessages = reactive<Map<string, ChatProvider.IPrivateMessage<string>[]>>(new Map())
 
 onBeforeMount(() => {
@@ -11,12 +13,15 @@ onBeforeMount(() => {
   }
 })
 
-function onMessage(message: ChatProvider.IPrivateMessage<string>) {
+async function onMessage(message: ChatProvider.IPrivateMessage<string>) {
   if (!allMessages.has(message.from.id)) {
-    allMessages.set(message.from.id, [])
+    allMessages.set(message.from.id, await $app.$client.me.recentMessages.query({ userId: message.from.id }))
   }
 
-  allMessages.get(message.from.id)!.push(message)
+  const ctx = allMessages.get(message.from.id)!
+  if (ctx.at(-1)?.id !== message.id) {
+    ctx.push(message)
+  }
 }
 </script>
 
