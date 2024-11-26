@@ -1,11 +1,13 @@
 <script lang="ts" setup>
+import type { Rec } from '~/composables/useToast'
+
 defineProps<{
   expanded?: boolean
   gap?: string
   id: string | number
 }>()
 
-const messages = defineModel<Array<{ id: string | number; message: string }>>(
+const messages = defineModel<Array<Rec>>(
   'messages',
   { default: [] }
 )
