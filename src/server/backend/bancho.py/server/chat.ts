@@ -2,11 +2,14 @@ import MySQLEvents from '@rodrigogs/mysql-events'
 import { and, desc, eq, or } from 'drizzle-orm'
 import { type Id } from '..'
 import * as schema from '../drizzle/schema'
+import { idToString, stringToId } from '../transforms'
 import { useDrizzle } from './source/drizzle'
 import { watchTable } from './event-sources/db'
 import { ChatProvider as Base } from '$base/server'
 
-export class ChatProvider extends Base<Id> {
+export class ChatProvider extends Base<Id> implements Base<Id> {
+  static readonly stringToId = stringToId
+  static readonly idToString = idToString
   drizzle = useDrizzle(schema)
 
   listener = watchTable(schema.mail, MySQLEvents.STATEMENTS.INSERT, (event) => {
@@ -30,11 +33,11 @@ export class ChatProvider extends Base<Id> {
     })
   }
 
-  async fetchMessages(from: { id: Id }, to: { id: Id }, opt: { page: number; perPage: number }): Promise<Base.IPrivateMessage<Id>[]> {
+  async getMessagesBetween(user1: { id: Id }, user2: { id: Id }, opt: { page: number; perPage: number }): Promise<Base.IPrivateMessage<Id>[]> {
     const res = await this.drizzle.query.mail.findMany({
       where: or(
-        eq(schema.mail.fromId, from.id),
-        eq(schema.mail.toId, to.id)
+        and(eq(schema.mail.fromId, user1.id), eq(schema.mail.toId, user2.id)),
+        and(eq(schema.mail.fromId, user2.id), eq(schema.mail.toId, user1.id)),
       ),
       orderBy: desc(schema.mail.id),
       limit: opt.perPage,
@@ -47,6 +50,6 @@ export class ChatProvider extends Base<Id> {
       content: i.msg,
       id: i.id,
       timestamp: i.time!,
-    }))
+    })).reverse()
   }
 }

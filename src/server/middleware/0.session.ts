@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import { Constant } from '~/server/common/constants'
 import type { Session } from '$base/server/session'
 import { sessions } from '~/server/singleton/service'
+import { GucchoError } from '~/def/messages'
 
 export default defineEventHandler(async (event) => {
   await sideEffect(event)
@@ -29,7 +30,7 @@ export async function sideEffect(event: H3Event) {
 }
 
 export function assertHaveSession(event: H3Event): asserts event is typeof event & { context: { session: Session } } {
-  haveSession(event) || raise(Error, 'no session')
+  haveSession(event) || throwGucchoError(GucchoError.SessionNotFound)
 }
 
 export function haveSession(event: H3Event): event is typeof event & { context: { session: Session } } {

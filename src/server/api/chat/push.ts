@@ -1,10 +1,10 @@
 // import { object, record, string, unknown } from 'zod'
-import type { ChatProvider } from '../../backend/$base/server'
-import { assertHaveSession } from '../../middleware/0.session'
-import { assertLoggedIn } from '../../middleware/1.user'
-import { assertIsAdmin } from '../../middleware/2.admin'
-import { chats } from '../../singleton/service'
 import type { Id } from '$active'
+import { type ChatProvider as BChat } from '$base/server'
+import { assertHaveSession } from '~/server/middleware/0.session'
+import { assertLoggedIn } from '~/server/middleware/1.user'
+import { assertIsAdmin } from '~/server/middleware/2.admin'
+import { ChatProvider, chats } from '~/server/singleton/service'
 
 // const vQ = object({
 
@@ -18,8 +18,8 @@ export default defineEventHandler(async (event) => {
 
   const ctx = chats.getOrCreateUserContext(event.context.user)
 
-  const listener = (v: ChatProvider.IPrivateMessage<Id>) => {
-    stream.push(JSON.stringify(v))
+  const listener = (v: BChat.IPrivateMessage<Id>) => {
+    stream.push(JSON.stringify(chats.serializeIPrivateMessageIds(v, ChatProvider)))
   }
 
   ctx.on('privateMessage', listener)
