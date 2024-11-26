@@ -53,6 +53,7 @@ export const mailToken: BaseMailTokenProvider = new MailTokenProvider()
 export {
   AdminProvider,
   ArticleProvider,
+  ChatProvider,
   ClanProvider,
   FileProvider,
   LogProvider,
