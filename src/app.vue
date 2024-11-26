@@ -1,6 +1,9 @@
 <script lang="ts" setup>
+import useToast from './composables/useToast'
+
 const scrollY = useScrollYObserver()
 const { status } = useZoomModal()
+const { messages } = useToast()
 </script>
 
 <template>
@@ -24,6 +27,15 @@ const { status } = useZoomModal()
     >
       <NuxtPage />
     </NuxtLayout>
+    <input id="stack-clear" type="radio" name="stack" class="hidden">
+    <div class="absolute top-20 right-6">
+      <div class="flex flex-col">
+        <template v-for="[idx] in messages" :key="idx">
+          <t-toast-stack :id="`msg-${idx}`" :messages="messages.get(idx)!" gap="1em" @update:messages="messages.set(idx, $event)" />
+          <div v-if="idx !== messages.size - 1" class="my-2" />
+        </template>
+      </div>
+    </div>
     <app-footer class="mt-auto" />
     <div class="drawer-side z-40">
       <label

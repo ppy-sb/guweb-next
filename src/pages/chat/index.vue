@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import useToast from '~/composables/useToast'
 import type { ChatProvider } from '$base/server'
 
 const $app = useNuxtApp()
+const { push } = useToast()
 
 const allMessages = reactive<Map<string, ChatProvider.IPrivateMessage<string>[]>>(new Map())
 
@@ -22,6 +24,13 @@ async function onMessage(message: ChatProvider.IPrivateMessage<string>) {
   if (ctx.at(-1)?.id !== message.id) {
     ctx.push(message)
   }
+  push(message.from.id, {
+    id: message.id,
+    message: message.content,
+    onClick() {
+
+    },
+  })
 }
 </script>
 
