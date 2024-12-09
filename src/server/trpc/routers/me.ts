@@ -10,7 +10,7 @@ import { CountryCode } from '~/def/country-code'
 import { Mail } from '~/def/mail'
 import { DynamicSettingStore, Scope } from '~/def/user'
 import { Constant } from '~/server/common/constants'
-import { ChatProvider, UserProvider, UserRelationProvider, chats, mail, mailToken, sessions, userRelations, users } from '~/server/singleton/service'
+import { UserProvider, UserRelationProvider, chats, mail, mailToken, sessions, userRelations, users } from '~/server/singleton/service'
 import { userProcedure as pUser } from '~/server/trpc/middleware/user'
 import ui from '~~/guccho.ui.config'
 import { Logger } from '$base/logger'
@@ -307,6 +307,6 @@ export const router = _router({
     .query(async ({ ctx, input }) => {
       const to = { id: UserProvider.stringToId(input.userId) }
       const messages = await chats.getMessagesBetween(ctx.user, to, { page: input.page, perPage: 50 })
-      return messages.map<BChat.IPrivateMessage<string>>(i => chats.serializeIPrivateMessageIds(i, ChatProvider))
+      return messages.map<BChat.IPrivateMessage<string>>(i => chats.serialize(i))
     }),
 })
