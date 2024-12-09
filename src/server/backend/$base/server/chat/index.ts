@@ -32,30 +32,36 @@ export abstract class ChatProvider<Id> extends IdTransformable {
         continue
       }
 
-      ctx.onPrivateMessage({ from, to, content, id, timestamp })
+      ctx.onPrivateMessage({ from, to, content, id, timestamp, read: false })
     }
   }
 
   abstract getMessagesBetween(from: { id: Id }, to: { id: Id }, opt: { page: number; perPage: number }): Promise<ChatProvider.IPrivateMessage<Id>[]>
 
-  serializeIPrivateMessageIds(i: ChatProvider.IPrivateMessage<Id>, P: typeof ChatProvider<unknown>) {
+  serialize<T>(i: ChatProvider.IPrivateMessage<T>): ChatProvider.IPrivateMessage<string> {
+    const _c = (this.constructor as unknown as typeof ChatProvider<T>)
+
     return ({
-      id: P.idToString(i.id),
-      from: mapId(i.from, P.idToString),
-      to: mapId(i.to, P.idToString),
+      id: _c.idToString(i.id),
+      from: mapId(i.from, _c.idToString),
+      to: mapId(i.to, _c.idToString),
       content: i.content,
       timestamp: i.timestamp,
+      read: i.read,
     })
   }
 }
 
 export namespace ChatProvider {
-  export interface IPrivateMessage<Id> {
-    id: Id
+  export interface IPrivateMessage<Id> extends IMessage<Id> {
     from: { id: Id }
     to: { id: Id }
+  }
 
+  export interface IMessage<Id> {
+    id: Id
     content: string
+    read: boolean
     timestamp: number
   }
 }

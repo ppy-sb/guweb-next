@@ -98,7 +98,7 @@ de-DE:
           loading="lazy"
           :src="beatmap.beatmapset.assets.list"
           :alt="autoLocale(beatmap.beatmapset.meta).title"
-          :onerror="placeholder"
+          :onerror="onLazyImageError"
           class="object-cover w-full h-full shadow-md rounded-xl"
         />
       </picture>

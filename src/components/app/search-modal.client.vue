@@ -197,7 +197,7 @@ const {
                     v-if="isBanchoBeatmapset(bs)"
                     class="h-[30px] w-[30px] mask mask-squircle overflow-hidden object-cover aspect-square"
                     :src="`https://b.ppy.sh/thumb/${bs.foreignId}.jpg`"
-                    :onerror="placeholder"
+                    :onerror="onLazyImageError"
                   >
                   <span>{{ bs.meta.intl.artist }} -
                     {{ bs.meta.intl.title }}</span>
@@ -229,7 +229,7 @@ const {
                     v-if="isBanchoBeatmapset(bm.beatmapset)"
                     class="h-[30px] w-[30px] mask mask-squircle overflow-hidden object-cover aspect-square"
                     :src="`https://b.ppy.sh/thumb/${bm.beatmapset.foreignId}.jpg`"
-                    :onerror="placeholder"
+                    :onerror="onLazyImageError"
                   >
                   <span class="text-ellipsis">{{ bm.beatmapset.meta.intl.artist }} - {{ bm.beatmapset.meta.intl.title }} [{{ bm.version }}]</span>
                 </div>
@@ -259,7 +259,7 @@ const {
                   <img
                     :src="user.avatarSrc"
                     class="w-[30px] h-[30px] mask mask-squircle overflow"
-                    :onerror="placeholder"
+                    :onerror="onLazyImageError"
                   >
                   <span>{{ user.name }}</span>
                 </div>

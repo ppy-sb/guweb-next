@@ -340,7 +340,7 @@ de-DE:
                 class="mx-auto shadow-md rounded-xl min-w-1/2"
                 :src="beatmapset.assets['list@2x']"
                 :alt="selectedMap.version"
-                :onerror="placeholder"
+                :onerror="onLazyImageError"
               >
               <div v-if="links" class="pt-2 text-start">
                 <ul class="menu">

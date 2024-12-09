@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import useToast from './composables/useToast'
-
 const scrollY = useScrollYObserver()
 const { status } = useZoomModal()
 const { messages } = useToast()

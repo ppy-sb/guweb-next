@@ -50,6 +50,7 @@ export class ChatProvider extends Base<Id> implements Base<Id> {
       content: i.msg,
       id: i.id,
       timestamp: i.time!,
+      read: i.read,
     })).reverse()
   }
 }
