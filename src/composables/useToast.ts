@@ -20,5 +20,9 @@ export default function () {
         messages.value.get(ctx)!.push(msg)
       }
     },
+    clear(ctx: string | number, msgId: string | number) {
+      const _ctx = messages.value.get(ctx)!
+      _ctx.splice(_ctx.findIndex(m => m.id === msgId), 1)
+    },
   }
 }
