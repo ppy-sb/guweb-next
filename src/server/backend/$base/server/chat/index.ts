@@ -1,13 +1,13 @@
 import { IdTransformable } from '../@extends'
-import { UserChatContext } from './objects'
+import { UserEventContext } from '../event'
 
 export abstract class ChatProvider<Id> extends IdTransformable {
-  contexts: Map<Id, UserChatContext<Id>> = new Map()
+  contexts: Map<Id, UserEventContext<Id>> = new Map()
   getOrCreateUserContext(user: { id: Id }) {
     if (this.contexts.has(user.id)) {
       return this.contexts.get(user.id)!
     }
-    const ctx = new UserChatContext<Id>(user)
+    const ctx = new UserEventContext<Id>(user)
     this.contexts.set(user.id, ctx)
     return ctx
   }
@@ -22,9 +22,9 @@ export abstract class ChatProvider<Id> extends IdTransformable {
     ctx.dispose()
   }
 
-  abstract send($: { from: { id: Id }; to: { id: Id }; content: string }): Promise<void>
+  abstract send($: ChatProvider.IPrivateMessage<Id>): Promise<void>
 
-  onPrivateMessage($: { from: { id: Id }; to: { id: Id }; content: string; id: Id; timestamp: number }) {
+  onPrivateMessage($: ChatProvider.IPrivateMessage<Id>) {
     const { from, to, content, id, timestamp } = $
     const contexts = [this.contexts.get(from.id), this.contexts.get(to.id)]
     for (const ctx of contexts) {

@@ -45,7 +45,7 @@ watch(() => cur.value?.messages.length, async () => {
           </a>
         </li>
       </ul>
-      <div v-if="idxMsg && cur" class="flex flex-col overflow-y-auto border-l md:grow">
+      <div v-if="idxMsg && cur" class="flex flex-col overflow-y-auto border-l grow">
         <div class="flex gap-2 p-4 border-b">
           <div class="w-16 mask mask-squircle">
             <img
@@ -54,8 +54,24 @@ watch(() => cur.value?.messages.length, async () => {
               :onerror="onLazyImageError"
             >
           </div>
-          <div class="text-3xl font-semibold">
-            {{ cur.name }}
+          <div>
+            <div class="text-3xl font-semibold">
+              {{ cur.name }}
+            </div>
+
+            <div
+              class="badge badge-outline" :class="{
+                'badge-success': cur.online,
+                'badge-neutral': !cur.online,
+              }"
+            >
+              <template v-if="cur.online">
+                {{ 'web online' }}
+              </template>
+              <template v-else>
+                {{ 'offline' }}
+              </template>
+            </div>
           </div>
         </div>
         <div ref="messages" class="p-4 overflow-y-scroll border-b bg-base-100 grow">
@@ -71,7 +87,7 @@ watch(() => cur.value?.messages.length, async () => {
                   >
                 </div>
               </div> -->
-              <div class="chat-bubble">
+              <div class="shadow-sm chat-bubble">
                 {{ message.content }}
               </div>
             </div>
