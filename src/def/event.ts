@@ -1,8 +1,8 @@
 import { type ChatProvider } from '$base/server'
 
 export enum EventType {
-  ServerMessage,
-  PrivateMessage,
+  ServerMessage = 'notify',
+  PrivateMessage = 'pm',
 }
 
 export type Event =

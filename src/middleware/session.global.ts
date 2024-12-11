@@ -19,8 +19,11 @@ export default defineNuxtRouteMiddleware(async () => {
 function pushService() {
   if (import.meta.client) {
     setTimeout(() => {
-      const { connect } = useChatStore()
-      connect()
+      const session = useSession()
+      const chats = useChatStore()
+
+      const evtBus = session.connectEventBus()
+      chats.listen(evtBus)
     }, 0)
   }
 }

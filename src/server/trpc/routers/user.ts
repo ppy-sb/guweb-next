@@ -23,7 +23,7 @@ import { GucchoError } from '~/def/messages'
 import { type RankingSystemScore } from '~/def/score'
 import { Scope, type UserCompact, UserRole } from '~/def/user'
 import { Constant } from '~/server/common/constants'
-import { MapProvider, ScoreProvider, UserProvider, mail, mailToken, userRelations, users } from '~/server/singleton/service'
+import { MapProvider, ScoreProvider, UserProvider, chats, mail, mailToken, userRelations, users } from '~/server/singleton/service'
 import ui from '~~/guccho.ui.config'
 
 const logger = Logger.child({ label: 'user' })
@@ -186,6 +186,27 @@ export const router = _router({
       const user = await users.getCompact({ handle: input.handle, scope: Scope.Public })
 
       return mapId(user, UserProvider.idToString)
+    }),
+  byId: p
+    .input(
+      object({
+        id: string(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const user = await users.getCompactById(UserProvider.stringToId(input.id))
+
+      return mapId(user, UserProvider.idToString)
+    }),
+
+  webOnline: optionalUserProcedure
+    .input(
+      object({
+        id: string(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return chats.contexts.has(UserProvider.stringToId(input.id))
     }),
   countRelations: optionalUserProcedure
     .input(
