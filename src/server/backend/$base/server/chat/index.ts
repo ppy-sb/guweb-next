@@ -22,7 +22,7 @@ export abstract class ChatProvider<Id> extends IdTransformable {
     ctx.dispose()
   }
 
-  abstract send($: ChatProvider.IPrivateMessage<Id>): Promise<void>
+  abstract send($: Omit<ChatProvider.IPrivateMessage<Id>, 'id' | 'read' | 'timestamp'>): Promise<void>
 
   onPrivateMessage($: ChatProvider.IPrivateMessage<Id>) {
     const { from, to, content, id, timestamp } = $
