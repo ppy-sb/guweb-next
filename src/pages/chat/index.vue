@@ -5,11 +5,13 @@ import { useSession } from '~/store/session'
 
 const session = useSession()
 const { allMessages, read } = useChatStore()
+const app = useNuxtApp()
 
 const main = useTemplateRef('messages')
 
 const idxMsg = ref<string>()
 const cur = computed(() => allMessages.get(idxMsg.value!))
+const message = ref('')
 
 async function onIdxSelected(id: string) {
   idxMsg.value = id
@@ -27,6 +29,17 @@ watch(() => cur.value?.messages.length, async () => {
   await nextTick()
   main.value.scrollTo({ top: main.value.scrollHeight, behavior: 'auto' })
 })
+
+async function send() {
+  if (!idxMsg.value) {
+    return
+  }
+  await app.$client.me.chat.send.mutate({
+    to: idxMsg.value,
+    message: message.value,
+  })
+  message.value = ''
+}
 </script>
 
 <template>
@@ -94,8 +107,8 @@ watch(() => cur.value?.messages.length, async () => {
           </template>
         </div>
         <form action="#" class="join shrink-0" @submit.prevent="noop">
-          <textarea id="" name="" class="bg-transparent rounded-none resize-none join-item textarea grow" rows="2" />
-          <button class="h-full rounded-none join-item btn btn-accent lg:rounded-br-md">
+          <textarea id="" v-model="message" name="" class="bg-transparent rounded-none resize-none join-item textarea grow" rows="2" />
+          <button class="h-full rounded-none join-item btn btn-accent lg:rounded-br-md" @click="send">
             send
           </button>
         </form>

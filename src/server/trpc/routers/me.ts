@@ -298,15 +298,35 @@ export const router = _router({
       return r
     }),
 
-  recentMessages: pUser
-    .input(
-      object({
-        page: number().min(0).default(0),
-        userId: string(),
-      }))
-    .query(async ({ ctx, input }) => {
-      const to = { id: UserProvider.stringToId(input.userId) }
-      const messages = await chats.getMessagesBetween(ctx.user, to, { page: input.page, perPage: 50 })
-      return messages.map<BChat.IPrivateMessage<string>>(i => chats.serialize(i))
-    }),
+  chat: _router({
+    recent: pUser
+      .input(
+        object({
+          page: number().min(0).default(0),
+          userId: string(),
+        }))
+      .query(async ({ ctx, input }) => {
+        const to = { id: UserProvider.stringToId(input.userId) }
+        const messages = await chats.getMessagesBetween(ctx.user, to, { page: input.page, perPage: 50 })
+        return messages.map<BChat.IPrivateMessage<string>>(i => chats.serialize(i))
+      }),
+    send: pUser
+      .input(
+        object({
+          to: string(),
+          message: string(),
+        }),
+      )
+      .mutation(async ({ input, ctx }) => {
+        const target = await users.getCompactById(UserProvider.stringToId(input.to))
+        if (!target) {
+          throwGucchoError(GucchoError.UserNotFound)
+        }
+        await chats.send({
+          from: ctx.user,
+          to: target,
+          content: input.message,
+        })
+      }),
+  }),
 })

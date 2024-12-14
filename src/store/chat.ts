@@ -15,7 +15,7 @@ export const useChatStore = defineStore('chat', () => {
     if (!allMessages.has(room)) {
       const [u, msgs] = [
         await $app.$client.user.byId.query({ id: room }).catch(noop),
-        await $app.$client.me.recentMessages.query({ userId: room }),
+        await $app.$client.me.chat.recent.query({ userId: room }),
       ]
 
       allMessages.set(room, {
