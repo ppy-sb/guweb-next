@@ -10,7 +10,10 @@ import {
 } from '~/def/dan'
 import { modes } from '~/def'
 
-withDefaults(defineProps<{ listMode?: boolean; disabled: boolean }>(), { listMode: false, disabled: false })
+withDefaults(defineProps<{
+  listMode?: boolean
+  disabled?: boolean
+}>(), { listMode: false, disabled: false })
 
 const emit = defineEmits<{
   (e: 'delete'): void
