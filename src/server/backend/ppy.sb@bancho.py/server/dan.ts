@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, notInArray } from 'drizzle-orm'
+import { and, asc, desc, eq, notInArray, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/mysql-core'
 import type { Id, ScoreId } from '../'
 import { BanchoPyScoreStatus } from '../../bancho.py/enums'
@@ -96,26 +96,29 @@ export class DanProvider extends Base<Id, ScoreId> {
     }) satisfies DatabaseDan<Id>[]
   }
 
+  readonly #preparedClearedScores = this.drizzle.select({
+    score: schema.scores,
+    beatmap: schema.beatmaps,
+    source: schema.sources,
+    dan: schema.dans,
+    requirement: schema.requirementCondBindings,
+  })
+    .from(schema.scores)
+    .innerJoin(schema.beatmaps, eq(schema.scores.mapMd5, schema.beatmaps.md5))
+    .innerJoin(schema.sources, and(
+      eq(schema.beatmaps.setId, schema.sources.id),
+      eq(schema.beatmaps.server, schema.sources.server)
+    ))
+    .innerJoin(schema.requirementClearedScores, eq(schema.scores.id, schema.requirementClearedScores.scoreId))
+    .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.requirement, schema.requirementCondBindings.id))
+    .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
+  // .innerJoin(schema.danConds, eq(schema.requirementCondBindings.condId, schema.danConds.id))
+    .where(({ dan }) => eq(dan.id, sql.placeholder('danId')))
+    .limit(100)
+    .prepare()
+
   async clearedScores(a: Id) {
-    const data = await this.drizzle.select({
-      score: schema.scores,
-      beatmap: schema.beatmaps,
-      source: schema.sources,
-      dan: schema.dans,
-      requirement: schema.requirementCondBindings,
-    })
-      .from(schema.scores)
-      .innerJoin(schema.beatmaps, eq(schema.scores.mapMd5, schema.beatmaps.md5))
-      .innerJoin(schema.sources, and(
-        eq(schema.beatmaps.setId, schema.sources.id),
-        eq(schema.beatmaps.server, schema.sources.server)
-      ))
-      .innerJoin(schema.requirementClearedScores, eq(schema.scores.id, schema.requirementClearedScores.scoreId))
-      .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.requirement, schema.requirementCondBindings.id))
-      .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
-      // .innerJoin(schema.danConds, eq(schema.requirementCondBindings.condId, schema.danConds.id))
-      .where(({ dan }) => eq(dan.id, a))
-      .limit(100)
+    const data = await this.#preparedClearedScores.execute({ danId: a })
 
     return data.map(({ score, source, beatmap, dan, requirement }) => {
       const [mode, ruleset] = fromBanchoPyMode(score.mode)
@@ -134,14 +137,14 @@ export class DanProvider extends Base<Id, ScoreId> {
     return res
   }
 
-  tbl = {
+  readonly tbl = {
     users: schema.users,
     scores: schema.scores,
     beatmaps: schema.beatmaps,
     sources: schema.sources,
   }
 
-  _sql = this.drizzle.select({
+  readonly #runCustomDanSql = this.drizzle.select({
     player: {
       id: this.tbl.users.id,
       name: this.tbl.users.name,
@@ -174,7 +177,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       opt.requirements.map(
         async a => ({
           requirement: a.type,
-          scores: await this._sql.where(
+          scores: await this.#runCustomDanSql.where(
             and(
               eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
               danSQLChunks(a.cond, opt.requirements, this.tbl),
