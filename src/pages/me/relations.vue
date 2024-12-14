@@ -246,7 +246,7 @@ de-DE:
   </div>
 </template>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .user-list {
   .user-list-item {
     @apply border-b-2 border-gbase-500/30;
