@@ -12,24 +12,8 @@ export const useChatStore = defineStore('chat', () => {
 
   async function onMessage(message: ChatProvider.IPrivateMessage<string>) {
     const room = message.from.id === session.userId ? message.to.id : message.from.id
-    if (!allMessages.has(room)) {
-      const [u, msgs] = [
-        await $app.$client.user.byId.query({ id: room }).catch(noop),
-        await $app.$client.me.chat.recent.query({ userId: room }),
-      ]
 
-      allMessages.set(room, {
-        messages: msgs,
-        ava: u?.avatarSrc || '',
-        name: u?.name || room,
-        online: false,
-      })
-    }
-
-    const c = allMessages.get(room)
-    if (!c) {
-      return
-    }
+    const c = allMessages.get(room) || await initRoom(room)
 
     if (c.messages.at(-1)?.id !== message.id) {
       c.messages.push(message)
@@ -38,11 +22,17 @@ export const useChatStore = defineStore('chat', () => {
     const online = await $app.$client.user.webOnline.query({ id: room })
     c.online = online
 
+    if (message.read) {
+      return
+    }
+    if (message.from.id === session.userId) {
+      return
+    }
     push(room, {
       id: message.id,
       message: message.content,
       onClick() {
-
+        // messages.value.set(room, [])
       },
     })
   }
@@ -59,12 +49,30 @@ export const useChatStore = defineStore('chat', () => {
     clear(roomId, msg.id)
   }
 
+  async function initRoom(room: string) {
+    const [u, msgs] = [
+      await $app.$client.user.byId.query({ id: room }).catch(noop),
+      await $app.$client.me.chat.recent.query({ userId: room }),
+    ]
+
+    const _room = {
+      messages: msgs,
+      ava: u?.avatarSrc || '',
+      name: u?.name || room,
+      online: false,
+    }
+
+    allMessages.set(room, _room)
+    return _room
+  }
+
   return {
     allMessages,
     onMessage,
     currentEventSource,
     read,
     listen,
+    initRoom,
   }
 })
 
