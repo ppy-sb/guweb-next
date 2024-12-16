@@ -57,4 +57,4 @@ export default {
     sender: 'pe@ppy.sb',
   },
 
-} satisfies UserBackendConfig
+} satisfies UserBackendConfig as UserBackendConfig
