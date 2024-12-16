@@ -38,6 +38,7 @@ export default {
 
   redisURL: safeEnv('REDIS_URL') ?? 'redis://localhost',
   dsn: env('DB_DSN'),
+  replica: env('DB_REPLICA_DSN'),
 
   avatar: {
     // must be a resolved path. Put absolute path or use 'resolve()' here.
@@ -55,4 +56,4 @@ export default {
     sender: 'pe@ppy.sb',
   },
 
-} satisfies UserBackendConfig
+} satisfies UserBackendConfig as UserBackendConfig
