@@ -19,6 +19,9 @@ export default defineEventHandler(async (event) => {
 
   tapChat(event.context.user, stream)
 
+  // nginx hack
+  setHeader(event, 'X-Accel-Buffering', 'no')
+
   return stream.send()
 })
 
