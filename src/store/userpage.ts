@@ -1,6 +1,9 @@
 import type { inferRouterError, inferRouterOutputs } from '@trpc/server'
 import { defineStore } from 'pinia'
 import type { WatchStopHandle } from 'vue'
+import type { LeaderboardRankingSystem } from '../def/common'
+import type { RouteLocationRaw } from '#vue-router'
+import { type SwitcherPropType } from '~/composables/useSwitcher'
 import { Mode, Ruleset } from '~/def'
 import type { AppRouter } from '~/server/trpc/routers'
 
@@ -11,6 +14,7 @@ export default defineStore('userpage', () => {
   const { hasRuleset } = useAdapterConfig()
 
   const app = useNuxtApp()
+  const router = useRouter()
 
   const error = shallowRef<{ message: string } | null>(null)
   const user = shallowRef<RouterOutput['user']['userpage'] | null>(null)
@@ -30,7 +34,7 @@ export default defineStore('userpage', () => {
 
   let dispose: WatchStopHandle[] = []
 
-  async function init() {
+  async function init(_initSwitcher: SwitcherPropType<LeaderboardRankingSystem>) {
     dispose.forEach(cb => cb())
 
     const route = useRoute('user-handle')
@@ -40,7 +44,7 @@ export default defineStore('userpage', () => {
       })
       user.value = u
 
-      setSwitcher(u.preferredMode)
+      setSwitcher(_initSwitcher || u.preferredMode)
       currentStatistic.value = _computeStatistic()
       currentRankingSystem.value = _computeRankingSystem()
       error.value = null
@@ -49,9 +53,20 @@ export default defineStore('userpage', () => {
         watch([
           () => switcher.mode,
           () => switcher.ruleset,
-        ], refresh),
+        ], () => {
+          currentStatistic.value = _computeStatistic()
+          currentRankingSystem.value = _computeRankingSystem()
+        }),
         watch(() => switcher.rankingSystem, () => {
           currentRankingSystem.value = _computeRankingSystem()
+        }),
+
+        watch(switcher, () => {
+          const l = window.location
+          const r = router.resolve(createRoute(switcher))
+
+          const rewrite = l.origin + r.fullPath
+          history.pushState({}, '', rewrite)
         }),
       ]
     }
@@ -82,6 +97,18 @@ export default defineStore('userpage', () => {
     }
   }
 
+  function createRoute(i: SwitcherPropType<LeaderboardRankingSystem>) {
+    return {
+      name: 'user-handle',
+      params: useRoute('user-handle').params,
+      query: {
+        rank: i.rankingSystem,
+        ruleset: i.ruleset,
+        mode: i.mode,
+      },
+    } as RouteLocationRaw
+  }
+
   return {
     refresh,
     dispose,
@@ -92,5 +119,6 @@ export default defineStore('userpage', () => {
     setSwitcher,
     currentStatistic,
     currentRankingSystem,
+    createRoute,
   }
 })

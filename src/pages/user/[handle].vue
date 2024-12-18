@@ -3,6 +3,8 @@ import { useIntersectionObserver } from '@vueuse/core'
 import { UserRole } from '~/def/user'
 import userpageStore from '~/store/userpage'
 import { useSession } from '~/store/session'
+import type { Mode, Ruleset } from '~/def'
+import type { LeaderboardRankingSystem } from '~/def/common'
 
 definePageMeta({
   alias: [
@@ -12,12 +14,17 @@ definePageMeta({
   ],
 })
 
-const app = useNuxtApp()
 const { t } = useI18n()
-const page = userpageStore()
+const app = useNuxtApp()
 const h = useRequestURL()
-await page.init()
 const session = useSession()
+const page = userpageStore()
+
+await page.init({
+  mode: h.searchParams.has('mode') ? h.searchParams.get('mode') as Mode : undefined,
+  ruleset: h.searchParams.has('ruleset') ? h.searchParams.get('ruleset') as Ruleset : undefined,
+  rankingSystem: h.searchParams.has('rank') ? h.searchParams.get('rank') as LeaderboardRankingSystem : undefined,
+})
 
 const switcherState = computed(() => `${page.switcher.mode} - ${page.switcher.ruleset} - ${page.switcher.rankingSystem}`)
 const userWithAppName = computed(() => `${page.user?.name} - ${app.$i18n.t('server.name')}`)
