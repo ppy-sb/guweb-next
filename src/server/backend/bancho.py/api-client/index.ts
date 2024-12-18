@@ -77,7 +77,7 @@ type LiveUserStatus =
     json: () => Promise<{ status: 'Must provide either id OR name!' }>
   }
 
-function createFetch(endpoint: string) {
+export function createFetch(endpoint: string) {
   if (endpoint.endsWith('/')) {
     endpoint = endpoint.slice(0, -1)
   }
