@@ -48,6 +48,7 @@ export default {
 
   api: {
     v1: 'http://api.dev.ppy.sb/v1',
+    sb: 'http://api.dev.ppy.sb/sb',
   },
 
   mail: {
