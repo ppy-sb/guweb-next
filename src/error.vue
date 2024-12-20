@@ -55,7 +55,7 @@ const { status } = useZoomModal()
 </template>
 
 <style lang="scss">
-@import "~/assets/styles/modal.scss";
+@use "~/assets/styles/modal.scss" as m;
 $zoom-content-stage1: saturate(0.4) opacity(0.8);
 $zoom-content-stage2: saturate(0.4) opacity(0.2);
 
@@ -67,21 +67,21 @@ $scale2: scale(0.96);
   &[data-l1-status="show"] {
 
     &[data-l2-status="hidden"] {
-      animation: zoomOutModalContent $duration $animate-function forwards;
+      animation: zoomOutModalContent m.$duration m.$animate-function forwards;
     }
 
     &[data-l2-status="show"] {
-      animation: zoomOutModalContentL2 $duration $animate-function forwards !important;
+      animation: zoomOutModalContentL2 m.$duration m.$animate-function forwards !important;
     }
 
     &[data-l2-status="closing"] {
-      animation: zoomInModalContentL2 $duration $animate-function forwards;
+      animation: zoomInModalContentL2 m.$duration m.$animate-function forwards;
     }
 
   }
 
   &[data-l1-status="closing"] {
-    animation: zoomInModalContent $duration $animate-function forwards;
+    animation: zoomInModalContent m.$duration m.$animate-function forwards;
   }
 }
 
