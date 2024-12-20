@@ -56,7 +56,7 @@ onMounted(() => {
 </template>
 
 <style lang="scss">
-@import "~/assets/styles/modal.scss";
+@use "~/assets/styles/modal.scss" as m;
 
 $in: blur(0.5em) opacity(0) saturate(0.5);
 .t-modal {
@@ -65,14 +65,14 @@ $in: blur(0.5em) opacity(0) saturate(0.5);
 
     &::backdrop {
 
-      animation: backdrop-fade-in calc($duration / 1.4) $animate-function forwards;
+      animation: backdrop-fade-in calc(m.$duration/ 1.4)  m.$animate-function forwards;
     }
 
-    animation: zoomIn $duration $animate-function forwards;
+    animation: zoomIn m.$duration m.$animate-function forwards;
     > [response-modal] {
-      animation: slideFromBottom calc($duration / 1.4) $animate-function forwards;
+      animation: slideFromBottom calc(m.$duration/ 1.4)  m.$animate-function forwards;
       @screen md {
-        animation: zoomIn $duration $animate-function forwards;
+        animation: zoomIn m.$duration m.$animate-function forwards;
       }
     }
   }
@@ -80,14 +80,14 @@ $in: blur(0.5em) opacity(0) saturate(0.5);
   &[status="closing"] {
 
      &::backdrop {
-      animation: backdrop-fade-out calc($duration / 1.2) $animate-function forwards;
+      animation: backdrop-fade-out calc(m.$duration/ 1.2)  m.$animate-function forwards;
     }
 
-    animation: zoomOut $duration $animate-function forwards;
+    animation: zoomOut m.$duration m.$animate-function forwards;
     > [response-modal] {
-      animation: slideToBottom calc($duration / 1.2) $animate-function forwards;
+      animation: slideToBottom calc(m.$duration/ 1.2)  m.$animate-function forwards;
       @screen md {
-        animation: zoomOut $duration $animate-function forwards;
+        animation: zoomOut m.$duration m.$animate-function forwards;
       }
     }
   }
