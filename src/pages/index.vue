@@ -53,7 +53,7 @@ de-DE:
             class="btn-shadow"
             :to="{
               name: 'user-handle',
-              params: { handle: session.$state.userId },
+              params: { handle: session.$state.userId! },
             }"
             variant="primary"
           >

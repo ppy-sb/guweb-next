@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import type { inferRouterOutputs } from '@trpc/server'
+import type { SwitcherState } from '../app/mode-switcher.vue'
 import { Rank } from '~/def'
 import type { LeaderboardRankingSystem } from '~/def/common'
 import { CountryCode } from '~/def/country-code'
 import type { ComponentLeaderboard } from '~/def/leaderboard'
 import type { AppRouter } from '~/server/trpc/routers'
+import { createUserpageRoute } from '~/store/userpage'
 
 type RouterOutput = inferRouterOutputs<AppRouter>
 
@@ -13,12 +15,14 @@ const props = defineProps<{
   user: Leaderboard['user']
   inThisLeaderboard: ComponentLeaderboard<string>['inThisLeaderboard']
   sort: LeaderboardRankingSystem
+  switcherState: SwitcherState
 }>()
 
 const { t } = useI18n()
 const addCommas = createNumberFormatter()
 const scoreFormat = createScoreFormatter()
-const option = {
+
+const option: Intl.NumberFormatOptions = {
   style: 'percent',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -50,7 +54,7 @@ const formatter = new Intl.NumberFormat(undefined, option)
         </div>
         <nuxt-link-locale
           class="text-base"
-          :to="{ name: 'user-handle', params: { handle: `@${user.safeName}` } }"
+          :to="createUserpageRoute({ ...switcherState, handle: `@${user.safeName}` })"
           :class="useUserRoleColor(user)"
         >
           {{ user.name }}

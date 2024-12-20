@@ -180,18 +180,18 @@ de-DE:
         class="relative w-full mx-auto overflow-x-auto xl:rounded-lg"
       >
         <table
-          class="table table-zebra whitespace-nowrap"
+          class="table table-xs md:table-sm xl:table-md table-zebra whitespace-nowrap"
           aria-describedby="desc"
         >
           <thead class="text-base">
             <tr>
-              <th class="text-center">
+              <th class="">
                 Rank
               </th>
               <th class="text-center">
                 Flag
               </th>
-              <th class="text-center">
+              <th class="">
                 Player
               </th>
               <th class="px-4 font-semibold text-end">
@@ -217,6 +217,7 @@ de-DE:
               :user="item.user"
               :in-this-leaderboard="item.inThisLeaderboard"
               :sort="selected.rankingSystem"
+              :switcher-state="selected"
             />
           </tbody>
         </table>

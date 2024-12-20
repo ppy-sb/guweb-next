@@ -63,7 +63,7 @@ export default defineStore('userpage', () => {
 
         watch(switcher, () => {
           const l = window.location
-          const r = router.resolve(createRoute(switcher))
+          const r = router.resolve(createUserpageRoute({ ...switcher, handle: route.params.handle }))
 
           const rewrite = l.origin + r.fullPath
           history.pushState({}, '', rewrite)
@@ -97,18 +97,6 @@ export default defineStore('userpage', () => {
     }
   }
 
-  function createRoute(i: SwitcherPropType<LeaderboardRankingSystem>) {
-    return {
-      name: 'user-handle',
-      params: useRoute('user-handle').params,
-      query: {
-        rank: i.rankingSystem,
-        ruleset: i.ruleset,
-        mode: i.mode,
-      },
-    } as RouteLocationRaw
-  }
-
   return {
     refresh,
     dispose,
@@ -119,6 +107,17 @@ export default defineStore('userpage', () => {
     setSwitcher,
     currentStatistic,
     currentRankingSystem,
-    createRoute,
   }
 })
+
+export function createUserpageRoute(i: SwitcherPropType<LeaderboardRankingSystem> & { handle: string }) {
+  return {
+    name: 'user-handle',
+    params: { handle: i.handle },
+    query: {
+      rank: i.rankingSystem,
+      ruleset: i.ruleset,
+      mode: i.mode,
+    },
+  } as RouteLocationRaw
+}
