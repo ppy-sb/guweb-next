@@ -70,10 +70,10 @@ const {
         <div class="form-control">
           <label class="flex gap-2 p-0 cursor-pointer label">
             <input
-              v-model="includes.beatmapsets" type="checkbox" class="checkbox checkbox-sm" @change="() => {
-                // includes.users = !includes.beatmaps && !includes.beatmapsets
-                raw(true)
-              }"
+              v-model="includes.beatmapsets"
+              type="checkbox"
+              class="checkbox checkbox-sm"
+              @change="raw(true)"
             >
             <span class="label-text">{{ t('include.beatmapsets') }}</span>
           </label>
@@ -81,10 +81,10 @@ const {
         <div class="form-control">
           <label class="flex gap-2 p-0 cursor-pointer label">
             <input
-              v-model="includes.beatmaps" type="checkbox" class="checkbox checkbox-sm" @change="() => {
-                // includes.users = !includes.beatmaps && !includes.beatmapsets
-                raw(true)
-              }"
+              v-model="includes.beatmaps"
+              type="checkbox"
+              class="checkbox checkbox-sm"
+              @change="raw(true)"
             >
             <span class="label-text">{{ t('include.beatmaps') }}</span>
           </label>
@@ -92,13 +92,10 @@ const {
         <div class="form-control">
           <label class="flex gap-2 p-0 cursor-pointer label">
             <input
-              v-model="includes.users" type="checkbox" class="checkbox checkbox-sm" @change="() => {
-                // if (!includes.beatmaps && !includes.beatmapsets) {
-                //   includes.beatmaps = true
-                //   includes.beatmapsets = true
-                // }
-                raw(false)
-              }"
+              v-model="includes.users"
+              type="checkbox"
+              class="checkbox checkbox-sm"
+              @change="raw(false)"
             >
             <span class="label-text">{{ t('include.users') }}</span>
           </label>
@@ -106,10 +103,10 @@ const {
         <div class="form-control">
           <label class="flex gap-2 p-0 cursor-pointer label">
             <input
-              v-model="includes.pages" type="checkbox" class="checkbox checkbox-sm" @change="() => {
-                // includes.users = !includes.beatmaps && !includes.beatmapsets
-                raw(true)
-              }"
+              v-model="includes.pages"
+              type="checkbox"
+              class="checkbox checkbox-sm"
+              @change="raw(true)"
             >
             <span class="label-text">{{ t('include.pages') }}</span>
           </label>
@@ -140,6 +137,7 @@ const {
           type="text"
           :placeholder="t('search')"
           class="input input-shadow w-full border-label-0 focus:input-primary bg-transparent !outline-0"
+          autofocus
           @input="onInput"
         >
         <div
