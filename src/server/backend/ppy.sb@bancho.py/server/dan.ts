@@ -265,4 +265,87 @@ export class DanProvider extends Base<Id, ScoreId> {
     return tx.delete(schema.danConds)
       .where(notInArray(schema.danConds.id, tx.select().from(sq.as('sq')))).catch(e => console.error(e))
   }
+
+  async getRelatedBeatmap(id: Id): Promise<Base.RequirementQualifiedScore<Id, ScoreId>[]> {
+    const query = sql`explain WITH RECURSIVE conds AS (
+  -- Base case: start with the root node
+  SELECT
+    id,
+    cond AS node,
+    CAST(NULL AS UNSIGNED) AS parent_type,  -- Explicitly cast NULL to UNSIGNED
+    CAST(JSON_UNQUOTE(JSON_EXTRACT(cond, '$.type')) AS UNSIGNED) AS type,
+    JSON_UNQUOTE(JSON_EXTRACT(cond, '$.val')) AS val,
+    0 AS depth,
+    0 AS negation_state,  -- Start without negation
+    CAST(JSON_UNQUOTE(JSON_EXTRACT(cond, '$.type')) AS UNSIGNED) AS effective_type
+  FROM dan_conds
+
+  UNION ALL
+
+  -- Recursive step: handle nodes where 'cond' is an OBJECT
+  SELECT
+    id,
+    JSON_EXTRACT(conds.node, '$.cond') AS node,
+    conds.type AS parent_type,
+    CAST(JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.type')) AS UNSIGNED) AS type,
+    JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.val')) AS val,
+    conds.depth + 1,
+    IF(conds.type = 3, conds.negation_state + 1, conds.negation_state) AS negation_state,
+    -- Adjust 'effective_type' based on negation_state
+    CASE
+      WHEN
+        MOD(IF(conds.type = 3, conds.negation_state + 1, conds.negation_state), 2) = 1
+        AND CAST(JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.type')) AS UNSIGNED) IN (1, 2)
+      THEN
+        CASE
+          WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.type')) AS UNSIGNED) = 1 THEN 2
+          WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.type')) AS UNSIGNED) = 2 THEN 1
+          ELSE CAST(JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.type')) AS UNSIGNED)
+        END
+      ELSE
+        CAST(JSON_UNQUOTE(JSON_EXTRACT(JSON_EXTRACT(conds.node, '$.cond'), '$.type')) AS UNSIGNED)
+    END AS effective_type
+  FROM conds
+  WHERE JSON_TYPE(JSON_EXTRACT(conds.node, '$.cond')) = 'OBJECT'
+
+  UNION ALL
+
+  -- Recursive step: handle nodes where 'cond' is an ARRAY
+  SELECT
+    id,
+    child_nodes.child_node AS node,
+    conds.type AS parent_type,
+    CAST(JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.type')) AS UNSIGNED) AS type,
+    JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.val')) AS val,
+    conds.depth + 1,
+    IF(conds.type = 3, conds.negation_state + 1, conds.negation_state) AS negation_state,
+    -- Adjust 'effective_type' based on negation_state
+    CASE
+      WHEN
+        MOD(IF(conds.type = 3, conds.negation_state + 1, conds.negation_state), 2) = 1
+        AND CAST(JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.type')) AS UNSIGNED) IN (1, 2)
+      THEN
+        CASE
+          WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.type')) AS UNSIGNED) = 1 THEN 2
+          WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.type')) AS UNSIGNED) = 2 THEN 1
+          ELSE CAST(JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.type')) AS UNSIGNED)
+        END
+      ELSE
+        CAST(JSON_UNQUOTE(JSON_EXTRACT(child_nodes.child_node, '$.type')) AS UNSIGNED)
+    END AS effective_type
+  FROM conds
+  JOIN JSON_TABLE(
+    conds.node,
+    '$.cond[*]' COLUMNS (
+      child_node JSON PATH '$'
+    )
+  ) AS child_nodes
+  WHERE JSON_TYPE(JSON_EXTRACT(conds.node, '$.cond')) = 'ARRAY'
+
+)
+SELECT id, type, effective_type, val, negation_state, depth
+FROM conds
+WHERE (conds.\`type\` = 6 AND \`val\` = 1862842)
+OR (conds.\`type\` = 7 AND \`val\` = '72424BC96CDCFC9093D8C131AC049CCA')`
+  }
 }
