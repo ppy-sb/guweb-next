@@ -1,7 +1,10 @@
 import { relations } from 'drizzle-orm'
 import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, tinyint, varchar } from 'drizzle-orm/mysql-core'
 import { clans, scores, users } from '../../bancho.py/drizzle/schema'
+import { OP } from '../../../../def/dan'
+import { type ObjValueTuple } from '../../../../def/good-to-have'
 
+type OPTuple = ObjValueTuple<typeof OP>
 export {
   achievements, beatmaps, channels,
   clans, clansRelations, clientHashes, clientHashesRelations, comments, commentsRelations, emailTokens, favourites, favouritesRelations,
@@ -48,7 +51,7 @@ export const scoresForeign = mysqlTable('scores_foreign', {
   originalScoreId: bigint('original_score_id', { mode: 'number' }).notNull(),
   originalPlayerId: int('original_player_id').notNull(),
   recipientId: int('recipient_id').notNull(),
-  hasReplay: tinyint('has_replay').notNull(),
+  hasReplay: boolean('has_replay').notNull(),
   receiptTime: datetime('receipt_time', { mode: 'string' }).notNull(),
 },
 (table) => {
@@ -86,11 +89,9 @@ export const dans = mysqlTable('dans', {
 
 export const danConds = mysqlTable('dan_conds', {
   id: int('id').autoincrement().notNull().primaryKey(),
-  cond: json('cond').notNull(),
-  creator: int('creator').references(() => users.id, { onDelete: 'set null' }),
-  updater: int('updater').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow().onUpdateNow(),
+  type: mysqlEnum('type', Object.values(OP) as OPTuple).notNull(),
+  value: varchar('value', { length: 128 }).notNull(),
+  parent: int('parent').default(0).notNull(),
 })
 
 export const requirementCondBindings = mysqlTable('requirement_cond_bindings', {
@@ -126,6 +127,10 @@ export const usersRelations = relations(users, ({ one }) => ({
 
 export const danRelations = relations(dans, ({ many }) => ({
   requirements: many(requirementCondBindings),
+}))
+
+export const danCondsRelations = relations(danConds, ({ one }) => ({
+  parent: one(danConds, { fields: [danConds.parent], references: [danConds.id] }),
 }))
 
 export const requirementCondBindingRelations = relations(requirementCondBindings, ({ one }) => ({

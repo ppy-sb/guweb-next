@@ -1,5 +1,4 @@
-import { and, asc, desc, eq, notInArray, sql } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/mysql-core'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { Id, ScoreId } from '../'
 import { BanchoPyScoreStatus } from '../../bancho.py/enums'
 import { useDrizzle } from '../../bancho.py/server/source/drizzle'
@@ -15,9 +14,10 @@ import * as schema from '../drizzle/schema'
 import { danSQLChunks } from '~/server/common/sql-dan'
 import { type UserCompact } from '~/def/user'
 import { GucchoError } from '~/def/messages'
-import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, Requirement } from '~/def/dan'
+import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, OP, Requirement } from '~/def/dan'
 import { DanProvider as Base } from '$base/server'
 import { validateCond } from '~/common/utils/dan'
+import { type Mode } from '~/def'
 
 export class DanProvider extends Base<Id, ScoreId> {
   static readonly idToString = idToString
@@ -27,30 +27,113 @@ export class DanProvider extends Base<Id, ScoreId> {
   static readonly scoreIdToString = scoreIdToString
 
   drizzle = useDrizzle(schema)
-  async get(id: Id, tx: typeof this.drizzle = this.drizzle): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
-    const i = await tx.query.dans.findFirst({
+  async get(
+    id: Id,
+  tx: typeof this.drizzle = this.drizzle
+  ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
+    // const q2 = await tx.select()
+    //   .from(schema.dans)
+    //   .innerJoin(schema.requirementCondBindings, eq(schema.dans.id, schema.requirementCondBindings.danId))
+    //   .where(
+    //     eq(schema.dans.id, id)
+    //   )
+    // Fetch the dan record
+    const dan = await tx.query.dans.findFirst({
       where(fields, operators) {
         return operators.eq(fields.id, id)
       },
+      orderBy: dan => asc(dan.id),
       with: {
         requirements: {
-          with: {
-            cond: true,
+          columns: {
+            condId: true,
+            type: true,
           },
         },
       },
-      orderBy: dan => asc(dan.id),
-    }) ?? throwGucchoError(GucchoError.DanNotFound)
+    })
+
+    if (!dan) {
+      throwGucchoError(GucchoError.DanNotFound)
+    }
+
+    return await this.getDanWithRequirements(dan, tx)
+  }
+
+  async getDanWithRequirements(dan: {
+    id: number
+    name: string
+    creator: number | null
+    createdAt: Date
+    description: string | null
+    updater: number | null
+    updatedAt: Date
+    requirements: {
+      type: 'pass' | 'no-pause'
+      condId: number
+    }[]
+  },
+  tx: typeof this.drizzle = this.drizzle
+  ) {
+    // Extract root condition IDs from requirements
+    const rootCondIds = dan.requirements.map(r => r.condId)
+
+    // Fetch all conditions starting from rootCondIds using a recursive CTE
+    const conditionsResult = await tx.execute(
+      sql`
+      WITH RECURSIVE cond_tree AS (
+        SELECT id, type, value, parent
+        FROM ${schema.danConds}
+        WHERE id IN (${sql.join(rootCondIds)})
+        UNION ALL
+        SELECT dc.id, dc.type, dc.value, dc.parent
+        FROM ${schema.danConds} dc
+        INNER JOIN cond_tree ct ON dc.parent = ct.id
+      )
+      SELECT id, type, value, parent
+      FROM cond_tree;
+    `
+    )
+
+    // Build a map of conditions by id
+    const condMap = new Map<number, CondNode>()
+    for (const row of conditionsResult as unknown as DanCondRow[]) {
+      condMap.set(row.id, {
+        id: row.id,
+        type: row.type,
+        value: row.value,
+        parent: row.parent,
+        children: [],
+      })
+    }
+
+    // Build the tree by linking child conditions to their parents
+    for (const cond of condMap.values()) {
+      if (cond.parent !== 0 && condMap.has(cond.parent)) {
+        const parentCond = condMap.get(cond.parent)
+        parentCond?.children.push(cond)
+      }
+    }
+
+    // Assemble the requirements with reconstructed conditions
+    const requirementsWithConds = dan.requirements.map((req) => {
+      const rootCondNode = condMap.get(req.condId)
+      if (!rootCondNode) {
+        throw new Error(`Root condition with id ${req.condId} not found`)
+      }
+      const cond = transformCond(rootCondNode)
+      return {
+        ...req,
+        id: rootCondNode.id,
+        type: req.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
+        cond,
+      }
+    })
 
     return {
-      ...i,
-      description: i.description ?? '',
-      requirements: i.requirements.map(i => ({
-        ...i,
-        id: i.cond.id,
-        type: i.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
-        cond: i.cond.cond as Cond,
-      })),
+      ...dan,
+      description: dan.description ?? '',
+      requirements: requirementsWithConds,
     }
   }
 
@@ -58,42 +141,33 @@ export class DanProvider extends Base<Id, ScoreId> {
     await this.drizzle.transaction(async (tx) => {
       await tx.delete(schema.requirementCondBindings).where(eq(schema.requirementCondBindings.danId, id))
       await tx.delete(schema.dans).where(eq(schema.dans.id, id))
-      await this.removeDangling(tx)
     })
   }
 
   async search(a: { keyword: string; page: Id; perPage: Id }): Promise<DatabaseDan<Id>[]> {
-    const f = await this.drizzle.query.dans.findMany({
-      where(fields, operators) {
-        return operators.or(
-          operators.like(fields.name, `%${a.keyword}%`),
-          operators.like(fields.description, `%${a.keyword}%`),
-        )
-      },
-      with: {
-        requirements: {
-          with: {
-            cond: true,
+    return this.drizzle.transaction(async (tx) => {
+      const f = await tx.query.dans.findMany({
+        where(fields, operators) {
+          return operators.or(
+            operators.like(fields.name, `%${a.keyword}%`),
+            operators.like(fields.description, `%${a.keyword}%`),
+          )
+        },
+        with: {
+          requirements: {
+            columns: {
+              condId: true,
+              type: true,
+            },
           },
         },
-      },
-      limit: a.perPage,
-      offset: a.page * a.perPage,
-      orderBy: dan => desc(dan.id),
-    })
+        limit: a.perPage,
+        offset: a.page * a.perPage,
+        orderBy: dan => desc(dan.id),
+      })
 
-    return f.map((i) => {
-      return {
-        ...i,
-        description: i.description ?? '',
-        requirements: i.requirements.map(i => ({
-          ...i,
-          id: i.cond.id,
-          type: i.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
-          cond: i.cond.cond as Cond,
-        })),
-      }
-    }) satisfies DatabaseDan<Id>[]
+      return await Promise.all(f.map(i => this.getDanWithRequirements(i, tx))) satisfies DatabaseDan<Id>[]
+    })
   }
 
   readonly #preparedClearedScores = this.drizzle.select({
@@ -188,8 +262,12 @@ export class DanProvider extends Base<Id, ScoreId> {
     )
   }
 
-  async saveComposed(i: Dan | DatabaseDan<Id>, u: UserCompact<Id>): Promise<DatabaseDan<number, DatabaseRequirementCondBinding<number, Requirement, Cond>>> {
+  async saveComposed(
+    i: Dan | DatabaseDan<Id>,
+    u: UserCompact<Id>
+  ): Promise<DatabaseDan<number, DatabaseRequirementCondBinding<number, Requirement, Cond>>> {
     return await this.drizzle.transaction(async (tx) => {
+    // 1. Insert or update the dan record
       const [result] = await tx
         .insert(schema.dans)
         .values({
@@ -198,7 +276,8 @@ export class DanProvider extends Base<Id, ScoreId> {
           description: i.description,
           creator: u.id,
           updater: u.id,
-        }).onDuplicateKeyUpdate({
+        })
+        .onDuplicateKeyUpdate({
           set: {
             updater: u.id,
             name: i.name,
@@ -207,49 +286,51 @@ export class DanProvider extends Base<Id, ScoreId> {
         })
 
       const id = (i as DatabaseDan<Id>).id ?? result.insertId
-
       if (!id) {
         throw new Error(`Failed to save Dan with requirements: ${JSON.stringify(i.requirements)}`)
       }
 
-      await tx.delete(schema.requirementCondBindings)
-        .where(
-          and(
-            eq(schema.requirementCondBindings.danId, id),
-          )
-        )
+      // 2. Fetch and delete existing requirement bindings and conditions
+      const existingBindings = await tx
+        .select({ condId: schema.requirementCondBindings.condId })
+        .from(schema.requirementCondBindings)
+        .where(eq(schema.requirementCondBindings.danId, id))
 
+      const oldCondIds = existingBindings.map(binding => binding.condId)
+
+      // Delete existing requirement bindings
+      await tx
+        .delete(schema.requirementCondBindings)
+        .where(eq(schema.requirementCondBindings.danId, id))
+
+      // Delete old conditions recursively
+      for (const oldCondId of oldCondIds) {
+        await this.deleteCondTree(oldCondId, tx)
+      }
+
+      // 3. Save new conditions and their tree structures
       for (const r of i.requirements) {
+      // Validate the condition
         r.cond = validateCond(r.cond)
-        const [res] = await tx
-          .insert(schema.danConds)
-          .values({
-            id: 'id' in r ? r.id : undefined,
-            cond: r.cond,
-            updater: u.id,
-            creator: u.id,
-          }).onDuplicateKeyUpdate({
-            set: {
-              updater: u.id,
-              cond: r.cond,
-            },
-          })
 
-        const rid = (r as DatabaseRequirementCondBinding<Id, Requirement, Cond>).id ?? res.insertId
+        // Recursively save the condition tree and get the root condition ID
+        const rootCondId = await this.saveCondTree(r.cond, tx, null)
 
-        if (!rid) {
+        if (!rootCondId) {
           throw new Error(`Failed to save cond: ${JSON.stringify(r.cond)}`)
         }
 
-        await tx.insert(schema.requirementCondBindings)
+        // 4. Link the root condition to the dan via requirement_cond_bindings
+        await tx
+          .insert(schema.requirementCondBindings)
           .values({
             danId: id,
-            condId: rid,
+            condId: rootCondId,
             type: r.type === Requirement.NoPause ? 'no-pause' : 'pass',
           })
       }
-      await this.removeDangling(tx)
 
+      // 5. Return the updated dan object
       return await this.get(id, tx)
     }).catch((e) => {
       console.error(e)
@@ -257,12 +338,239 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async removeDangling(tx: typeof this.drizzle = this.drizzle) {
-    const dc2 = alias(schema.danConds, 'dc2')
-    const sq = tx.select({ id: dc2.id }).from(schema.requirementCondBindings)
-      .innerJoin(dc2, eq(schema.requirementCondBindings.condId, dc2.id))
+  private async saveCondTree(
+    cond: Cond,
+    tx: typeof this.drizzle,
+    parentId: number | null
+  ): Promise<number> {
+    switch (cond.type) {
+      case OP.AND:
+      case OP.OR: {
+      // Insert current condition node
+        const [res] = await tx
+          .insert(schema.danConds)
+          .values({
+            type: cond.type,
+            value: '', // No value for 'and' or 'or'
+            parent: parentId ?? 0,
+          })
 
-    return tx.delete(schema.danConds)
-      .where(notInArray(schema.danConds.id, tx.select().from(sq.as('sq')))).catch(e => console.error(e))
+        const currentId = res.insertId
+        if (!currentId) {
+          throw new Error(`Failed to insert condition of type ${cond.type}`)
+        }
+
+        // Recursively save child conditions
+        for (const childCond of cond.cond) {
+          await this.saveCondTree(childCond, tx, currentId)
+        }
+
+        return currentId
+      }
+      case OP.NOT: {
+        if (!cond.cond) {
+          throw new Error('\'not\' operator must have exactly one child')
+        }
+        // Insert current condition node
+        const [res] = await tx
+          .insert(schema.danConds)
+          .values({
+            type: cond.type,
+            value: '', // No value for 'not'
+            parent: parentId ?? 0,
+          })
+
+        const currentId = res.insertId
+        if (!currentId) {
+          throw new Error(`Failed to insert condition of type ${cond.type}`)
+        }
+
+        // Recursively save the single child condition
+        await this.saveCondTree(cond.cond, tx, currentId)
+
+        return currentId
+      }
+      case OP.Remark: {
+        if (!cond.cond) {
+          throw new Error('\'remark\' operator must have exactly one child')
+        }
+        // Insert current condition node
+        const [res] = await tx
+          .insert(schema.danConds)
+          .values({
+            type: cond.type,
+            value: cond.remark, // Store remark in 'value' field
+            parent: parentId ?? 0,
+          })
+
+        const currentId = res.insertId
+        if (!currentId) {
+          throw new Error(`Failed to insert condition of type ${cond.type}`)
+        }
+
+        // Recursively save the child condition
+        await this.saveCondTree(cond.cond, tx, currentId)
+
+        return currentId
+      }
+      case OP.NoPause: {
+      // Leaf condition with no value
+        const [res] = await tx
+          .insert(schema.danConds)
+          .values({
+            type: cond.type,
+            value: '', // No value for 'no-pause'
+            parent: parentId ?? 0,
+          })
+
+        const currentId = res.insertId
+        if (!currentId) {
+          throw new Error(`Failed to insert condition of type ${cond.type}`)
+        }
+
+        return currentId
+      }
+      default: {
+      // Leaf conditions with a value
+        let valueStr: string
+        switch (cond.type) {
+          case OP.AccGte:
+          case OP.BanchoBeatmapIdEq:
+          case OP.ScoreGte:
+          case OP.WithStableMod:
+          case OP.Extends:
+            valueStr = cond.val.toString()
+            break
+          case OP.ModeEq:
+            valueStr = cond.val as string
+            break
+          case OP.BeatmapMd5Eq:
+            valueStr = cond.val
+            break
+          default:
+            throw new Error(`Unsupported condition type ${(cond as any).type}`)
+        }
+
+        // Insert the leaf condition
+        const [res] = await tx
+          .insert(schema.danConds)
+          .values({
+            type: cond.type,
+            value: valueStr,
+            parent: parentId ?? 0,
+          })
+
+        const currentId = res.insertId
+        if (!currentId) {
+          throw new Error(`Failed to insert condition of type ${cond.type}`)
+        }
+
+        return currentId
+      }
+    }
   }
+
+  private async deleteCondTree(condId: number, tx: typeof this.drizzle): Promise<void> {
+  // Use a recursive CTE to find all descendant condition IDs
+    const conditionsToDeleteResult = await tx.execute(
+      sql`
+      WITH RECURSIVE cond_tree AS (
+        SELECT id
+        FROM ${schema.danConds}
+        WHERE id = ${condId}
+        UNION ALL
+        SELECT dc.id
+        FROM ${schema.danConds} dc
+        INNER JOIN cond_tree ct ON dc.parent = ct.id
+      )
+      SELECT id FROM cond_tree
+    `
+    )
+
+    const condIdsToDelete = (conditionsToDeleteResult as unknown as { id: number }[]).map(row => row.id)
+
+    // Delete the conditions
+    if (condIdsToDelete.length > 0) {
+      await tx
+        .delete(schema.danConds)
+        .where(inArray(schema.danConds.id, condIdsToDelete))
+    }
+  }
+}
+
+function transformCond(condNode: CondNode): Cond {
+  const { type, value, children } = condNode
+
+  switch (type) {
+    case OP.AND:
+    case OP.OR:
+      return {
+        type,
+        cond: children.map(transformCond),
+      }
+
+    case OP.NOT:{
+      if (children.length !== 1) {
+        throw new Error('\'not\' operator must have exactly one child')
+      }
+      return {
+        type,
+        cond: transformCond(children[0]),
+      }
+    }
+
+    case OP.Remark:
+      return {
+        type,
+        remark: value,
+        cond: transformCond(children[0]),
+      } as Cond
+
+    case OP.AccGte:
+    case OP.BanchoBeatmapIdEq:
+    case OP.ScoreGte:
+    case OP.WithStableMod:
+      // Leaf condition
+      return {
+        type,
+        val: Number(value),
+      }
+
+    case OP.ModeEq:
+      return {
+        type,
+        val: value as Mode,
+      }
+
+    case OP.Extends:
+      return {
+        type,
+        val: Number(value) as Requirement,
+      }
+
+    case OP.BeatmapMd5Eq:
+      return {
+        type,
+        val: value,
+      }
+    case OP.NoPause:
+      return {
+        type,
+      }
+  }
+}
+
+interface CondNode {
+  id: number
+  type: OP
+  value: string
+  parent: number
+  children: CondNode[]
+}
+
+interface DanCondRow {
+  id: number
+  type: OP
+  value: string
+  parent: number
 }
