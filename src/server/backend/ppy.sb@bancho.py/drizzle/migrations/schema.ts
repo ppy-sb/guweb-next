@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { bigint, char, date, datetime, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, tinyint, unique, varchar } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, char, date, datetime, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, tinyint, unique, varchar } from 'drizzle-orm/mysql-core'
 
 export const achievements = mysqlTable('achievements', {
   id: int('id').autoincrement().notNull(),
@@ -298,7 +298,7 @@ export const scoresForeign = mysqlTable('scores_foreign', {
   originalScoreId: bigint('original_score_id', { mode: 'number' }).notNull(),
   originalPlayerId: int('original_player_id').notNull(),
   recipientId: int('recipient_id').notNull(),
-  hasReplay: tinyint('has_replay').notNull(),
+  hasReplay: boolean('has_replay').notNull(),
   receiptTime: datetime('receipt_time', { mode: 'string' }).notNull(),
 },
 (table) => {

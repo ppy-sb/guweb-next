@@ -11,11 +11,11 @@ const migrationsRelativePath = path.relative(process.cwd(), migrationsPath)
 export default {
   schema: fileURLToPath(new URL('./schema.ts', import.meta.url)),
   out: migrationsRelativePath,
-  driver: 'mysql2',
+  dialect: 'mysql',
   introspect: {
     casing: 'camel',
   },
   dbCredentials: {
-    uri: guccho.dsn,
+    url: guccho.dsn,
   },
 } satisfies Config

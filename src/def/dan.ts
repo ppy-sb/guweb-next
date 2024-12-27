@@ -11,18 +11,18 @@ export enum Requirement {
 }
 
 export enum OP {
-  Remark,
-  OR,
-  AND,
-  NOT,
-  ModeEq,
-  Extends,
-  BanchoBeatmapIdEq,
-  BeatmapMd5Eq,
-  NoPause,
-  AccGte,
-  ScoreGte,
-  WithStableMod,
+  Remark = 'rm',
+  OR = 'or',
+  AND = 'and',
+  NOT = 'not',
+  ModeEq = 'mode-eq',
+  Extends = 'extends',
+  BanchoBeatmapIdEq = 'bancho-bm-id-eq',
+  BeatmapMd5Eq = 'bm-md5-eq',
+  NoPause = 'no-pause',
+  AccGte = 'acc-gte',
+  ScoreGte = 'score-gte',
+  WithStableMod = 'with-stable-mod',
 }
 
 export interface CondBase<O> {
