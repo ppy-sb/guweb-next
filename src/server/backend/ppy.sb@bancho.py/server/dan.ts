@@ -29,7 +29,7 @@ export class DanProvider extends Base<Id, ScoreId> {
   drizzle = useDrizzle(schema)
   async get(
     id: Id,
-  tx: typeof this.drizzle = this.drizzle
+  tx: Omit<typeof this.drizzle, '$client'> = this.drizzle
   ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
     // const q2 = await tx.select()
     //   .from(schema.dans)
@@ -73,18 +73,41 @@ export class DanProvider extends Base<Id, ScoreId> {
       condId: number
     }[]
   },
-  tx: typeof this.drizzle = this.drizzle
+  tx: Omit<typeof this.drizzle, '$client'> = this.drizzle
   ) {
     // Extract root condition IDs from requirements
     const rootCondIds = dan.requirements.map(r => r.condId)
 
+    const built = await this.buildCondTree(rootCondIds, tx)
+
+    const requirementsWithConds = dan.requirements.map((req) => {
+      const cond = built[req.condId]
+      if (!cond) {
+        throw new Error(`Root condition with id ${req.condId} not found`)
+      }
+      return {
+        ...req,
+        id: req.condId,
+        type: req.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
+        cond,
+      }
+    })
+
+    return {
+      ...dan,
+      description: dan.description ?? '',
+      requirements: requirementsWithConds,
+    }
+  }
+
+  async buildCondTree(ids: Id[], tx: Omit<typeof this.drizzle, '$client'>): Promise<Record<Id, Cond>> {
     // Fetch all conditions starting from rootCondIds using a recursive CTE
-    const conditionsResult = await tx.execute(
+    const [conditionsResult] = await tx.execute(
       sql`
       WITH RECURSIVE cond_tree AS (
         SELECT id, type, value, parent
         FROM ${schema.danConds}
-        WHERE id IN (${sql.join(rootCondIds)})
+        WHERE id IN (${ids})
         UNION ALL
         SELECT dc.id, dc.type, dc.value, dc.parent
         FROM ${schema.danConds} dc
@@ -115,26 +138,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       }
     }
 
-    // Assemble the requirements with reconstructed conditions
-    const requirementsWithConds = dan.requirements.map((req) => {
-      const rootCondNode = condMap.get(req.condId)
-      if (!rootCondNode) {
-        throw new Error(`Root condition with id ${req.condId} not found`)
-      }
-      const cond = transformCond(rootCondNode)
-      return {
-        ...req,
-        id: rootCondNode.id,
-        type: req.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
-        cond,
-      }
-    })
-
-    return {
-      ...dan,
-      description: dan.description ?? '',
-      requirements: requirementsWithConds,
-    }
+    return Object.fromEntries(ids.map(id => [id, transformCond(condMap.get(id) ?? throwGucchoError(GucchoError.DanNotFound))]))
   }
 
   async delete(id: number): Promise<void> {
@@ -305,7 +309,7 @@ export class DanProvider extends Base<Id, ScoreId> {
 
       // Delete old conditions recursively
       for (const oldCondId of oldCondIds) {
-        await this.deleteCondTree(oldCondId, tx)
+        await this.deleteCondNodeWithChildren(oldCondId, tx)
       }
 
       // 3. Save new conditions and their tree structures
@@ -340,7 +344,7 @@ export class DanProvider extends Base<Id, ScoreId> {
 
   private async saveCondTree(
     cond: Cond,
-    tx: typeof this.drizzle,
+    tx: Omit<typeof this.drizzle, '$client'>,
     parentId: number | null
   ): Promise<number> {
     switch (cond.type) {
@@ -470,9 +474,9 @@ export class DanProvider extends Base<Id, ScoreId> {
     }
   }
 
-  private async deleteCondTree(condId: number, tx: typeof this.drizzle): Promise<void> {
+  private async deleteCondNodeWithChildren(condId: number, tx: Omit<typeof this.drizzle, '$client'>): Promise<void> {
   // Use a recursive CTE to find all descendant condition IDs
-    const conditionsToDeleteResult = await tx.execute(
+    const [conditionsToDeleteResult] = await tx.execute(
       sql`
       WITH RECURSIVE cond_tree AS (
         SELECT id
