@@ -19,6 +19,8 @@ const emit = defineEmits<{
   (e: 'delete'): void
 }>()
 
+const _op = $enum(OP)
+
 const drag = ref(false)
 
 const cond = defineModel<Cond>()
@@ -69,7 +71,7 @@ function selectCond() {
               select
             </option>
             <option v-for="op in ops" :key="op" :value="op">
-              {{ OP[op] }}
+              {{ _op.getKeyOrDefault(op, '?') }}
             </option>
           </select>
         </div>

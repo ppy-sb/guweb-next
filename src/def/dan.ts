@@ -11,7 +11,7 @@ export enum Requirement {
 }
 
 export enum OP {
-  Remark = 'rm',
+  Remark = 'rem',
   OR = 'or',
   AND = 'and',
   NOT = 'not',
