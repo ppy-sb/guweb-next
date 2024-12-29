@@ -4,6 +4,10 @@ import { validateUsecase } from '~/common/utils/dan'
 import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
 
+definePageMeta({
+  middleware: ['auth'],
+})
+
 type RouterOutput = inferRouterOutputs<AppRouter>
 const requirements = [Requirement.Pass, Requirement.NoPause]
 const typeAC = [Requirement.Pass, Requirement.NoPause]
@@ -274,6 +278,9 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
       </table>
     </div>
   </section>
+  <dev-only>
+    {{ compose }}
+  </dev-only>
 </template>
 
 <style scoped>
