@@ -47,8 +47,18 @@ function selectCond() {
   if (!cond.value) {
     return
   }
+
   if (cond.value.type === OP.AND || cond.value.type === OP.OR) {
     cond.value.cond = []
+  }
+
+  if (cond.value.type === OP.NOT) {
+    if (Array.isArray(cond.value.cond)) {
+      cond.value.cond = {
+        type: OP.AND,
+        cond: cond.value.cond,
+      }
+    }
   }
 }
 </script>

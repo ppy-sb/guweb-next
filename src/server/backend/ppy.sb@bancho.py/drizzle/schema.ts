@@ -91,7 +91,7 @@ export const danConds = mysqlTable('dan_conds', {
   id: int('id').autoincrement().notNull().primaryKey(),
   type: mysqlEnum('type', Object.values(OP) as OPTuple).notNull(),
   value: varchar('value', { length: 128 }).notNull(),
-  parent: int('parent').default(0).notNull(),
+  parent: int('parent'),
 })
 
 export const requirementCondBindings = mysqlTable('requirement_cond_bindings', {
