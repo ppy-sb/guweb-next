@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { aliasedTable, and, asc, desc, eq, getTableName, inArray, like, or, sql } from 'drizzle-orm'
 import type { Id, ScoreId } from '../'
 import { BanchoPyScoreStatus } from '../../bancho.py/enums'
 import { useDrizzle } from '../../bancho.py/server/source/drizzle'
@@ -78,7 +78,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     // Extract root condition IDs from requirements
     const rootCondIds = dan.requirements.map(r => r.condId)
 
-    const built = await this.buildCondTree(rootCondIds, tx)
+    const built = await this.fetchAndBuildCondTree(rootCondIds, tx)
 
     const requirementsWithConds = dan.requirements.map((req) => {
       const cond = built[req.condId]
@@ -100,27 +100,31 @@ export class DanProvider extends Base<Id, ScoreId> {
     }
   }
 
-  async buildCondTree(ids: Id[], tx: Omit<typeof this.drizzle, '$client'>): Promise<Record<Id, Cond>> {
+  async fetchAndBuildCondTree(ids: Id[], tx: Omit<typeof this.drizzle, '$client'>): Promise<Record<Id, Cond>> {
     // Fetch all conditions starting from rootCondIds using a recursive CTE
     const [conditionsResult] = await tx.execute(
       sql`
       WITH RECURSIVE cond_tree AS (
-        SELECT id, type, value, parent
+        SELECT ${schema.danConds.id}, ${schema.danConds.type}, ${schema.danConds.value}, ${schema.danConds.parent}
         FROM ${schema.danConds}
-        WHERE id IN (${ids})
+        WHERE id IN ${ids}
         UNION ALL
         SELECT dc.id, dc.type, dc.value, dc.parent
         FROM ${schema.danConds} dc
         INNER JOIN cond_tree ct ON dc.parent = ct.id
       )
       SELECT id, type, value, parent
-      FROM cond_tree;
+      FROM cond_tree
     `
     )
 
+    return this.#buildCondTreeMem(ids, conditionsResult as unknown as DanCondRow[])
+  }
+
+  #buildCondTreeMem(ids: Id[], rows: DanCondRow[]) {
     // Build a map of conditions by id
     const condMap = new Map<number, CondNode>()
-    for (const row of conditionsResult as unknown as DanCondRow[]) {
+    for (const row of rows) {
       condMap.set(row.id, {
         id: row.id,
         type: row.type,
@@ -150,27 +154,71 @@ export class DanProvider extends Base<Id, ScoreId> {
 
   async search(a: { keyword: string; page: Id; perPage: Id }): Promise<DatabaseDan<Id>[]> {
     return this.drizzle.transaction(async (tx) => {
-      const f = await tx.query.dans.findMany({
-        where(fields, operators) {
-          return operators.or(
-            operators.like(fields.name, `%${a.keyword}%`),
-            operators.like(fields.description, `%${a.keyword}%`),
-          )
-        },
-        with: {
-          requirements: {
-            columns: {
-              condId: true,
-              type: true,
-            },
-          },
-        },
-        limit: a.perPage,
-        offset: a.page * a.perPage,
-        orderBy: dan => desc(dan.id),
-      })
+      const recursiveCond = this.#virtualTableDanTreeAlias('cond_tree')
 
-      return await Promise.all(f.map(i => this.getDanWithRequirements(i, tx))) satisfies DatabaseDan<Id>[]
+      const bmId = aliasedTable(schema.beatmaps, 'b_id')
+      const bmMd5 = aliasedTable(schema.beatmaps, 'b_md5')
+
+      const result = await tx.selectDistinct({
+        id: schema.dans.id,
+      })
+        .from(schema.dans)
+        .innerJoin(schema.requirementCondBindings, eq(schema.dans.id, schema.requirementCondBindings.danId))
+        .innerJoin(recursiveCond.aliasedTable, eq(recursiveCond.column.root, schema.requirementCondBindings.condId))
+        // cannot use OR here because it will prevent index usage.
+        .leftJoin(bmId, and(eq(recursiveCond.column.type, OP.BanchoBeatmapIdEq), eq(bmId.id, recursiveCond.column.value), eq(bmId.server, 'osu!')))
+        .leftJoin(bmMd5, and(eq(recursiveCond.column.type, OP.BeatmapMd5Eq), eq(bmMd5.md5, recursiveCond.column.value)))
+        .where(
+          or(
+            // search name
+            like(schema.dans.name, `%${a.keyword}%`),
+            // search description
+            like(schema.dans.description, `%${a.keyword}%`),
+
+            // search conditions
+            and(
+              // must be truthy conditions
+              eq(recursiveCond.column.truthy, 1),
+
+              or(
+              // mode eq 'mania'
+              // bancho beatmap id eq
+              // beatmap md5 eq
+                and(
+                  inArray(recursiveCond.column.type, [
+                    OP.ModeEq,
+                    OP.BanchoBeatmapIdEq,
+                    OP.BeatmapMd5Eq,
+                  ]),
+                  eq(recursiveCond.column.value, a.keyword),
+                ),
+
+                // further search matched beatmaps
+                or(
+                  like(bmId.artist, `%${a.keyword}%`),
+                  like(bmId.title, `%${a.keyword}%`),
+                  like(bmId.creator, `%${a.keyword}%`),
+                  like(bmMd5.artist, `%${a.keyword}%`),
+                  like(bmMd5.title, `%${a.keyword}%`),
+                  like(bmMd5.creator, `%${a.keyword}%`),
+                ),
+              )
+            ),
+
+          )
+        )
+        .limit(a.perPage)
+        .offset(a.page * a.perPage)
+
+      const dans = await tx.query.dans
+        .findMany({
+          where: inArray(schema.dans.id, result.map(({ id }) => id)),
+          with: {
+            requirements: true,
+          },
+        })
+
+      return Promise.all(dans.map(d => this.getDanWithRequirements(d, tx)))
     })
   }
 
@@ -269,7 +317,7 @@ export class DanProvider extends Base<Id, ScoreId> {
   async saveComposed(
     i: Dan | DatabaseDan<Id>,
     u: UserCompact<Id>
-  ): Promise<DatabaseDan<number, DatabaseRequirementCondBinding<number, Requirement, Cond>>> {
+  ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
     return await this.drizzle.transaction(async (tx) => {
     // 1. Insert or update the dan record
       const [result] = await tx
@@ -356,7 +404,7 @@ export class DanProvider extends Base<Id, ScoreId> {
           .values({
             type: cond.type,
             value: '', // No value for 'and' or 'or'
-            parent: parentId ?? 0,
+            parent: parentId,
           })
 
         const currentId = res.insertId
@@ -381,7 +429,7 @@ export class DanProvider extends Base<Id, ScoreId> {
           .values({
             type: cond.type,
             value: '', // No value for 'not'
-            parent: parentId ?? 0,
+            parent: parentId,
           })
 
         const currentId = res.insertId
@@ -404,7 +452,7 @@ export class DanProvider extends Base<Id, ScoreId> {
           .values({
             type: cond.type,
             value: cond.remark, // Store remark in 'value' field
-            parent: parentId ?? 0,
+            parent: parentId,
           })
 
         const currentId = res.insertId
@@ -424,7 +472,7 @@ export class DanProvider extends Base<Id, ScoreId> {
           .values({
             type: cond.type,
             value: '', // No value for 'no-pause'
-            parent: parentId ?? 0,
+            parent: parentId,
           })
 
         const currentId = res.insertId
@@ -461,7 +509,7 @@ export class DanProvider extends Base<Id, ScoreId> {
           .values({
             type: cond.type,
             value: valueStr,
-            parent: parentId ?? 0,
+            parent: parentId,
           })
 
         const currentId = res.insertId
@@ -475,29 +523,114 @@ export class DanProvider extends Base<Id, ScoreId> {
   }
 
   private async deleteCondNodeWithChildren(condId: number, tx: Omit<typeof this.drizzle, '$client'>): Promise<void> {
-  // Use a recursive CTE to find all descendant condition IDs
-    const [conditionsToDeleteResult] = await tx.execute(
-      sql`
-      WITH RECURSIVE cond_tree AS (
-        SELECT id
-        FROM ${schema.danConds}
-        WHERE id = ${condId}
-        UNION ALL
-        SELECT dc.id
-        FROM ${schema.danConds} dc
-        INNER JOIN cond_tree ct ON dc.parent = ct.id
-      )
-      SELECT id FROM cond_tree
-    `
-    )
-
-    const condIdsToDelete = (conditionsToDeleteResult as unknown as { id: number }[]).map(row => row.id)
-
-    // Delete the conditions
-    if (condIdsToDelete.length > 0) {
+    try {
+      const { column, aliasedTable } = this.#virtualTableDanTreeAlias('c')
       await tx
         .delete(schema.danConds)
-        .where(inArray(schema.danConds.id, condIdsToDelete))
+        .where(
+          inArray(schema.danConds.id,
+            tx
+              .select({ id: column.id })
+              .from(aliasedTable)
+              .where(
+                eq(column.root, condId)
+              )
+          )
+        )
+    }
+    catch (e) {
+      console.error(e)
+    }
+  }
+
+  // id | root | type | value | parent | depth | truthy | effective_type
+  #danTreeRecursive = /* sql */`
+  WITH RECURSIVE conds AS (
+    -- Modified CTE with value_int
+    SELECT
+        dc.id,
+        dc.id AS root,
+        dc.type,
+        dc.value,
+        -- CASE
+        --     WHEN dc.type = 'bancho-bm-id-eq'
+        --     AND dc.value REGEXP '^[0-9]+$' THEN CONVERT(
+        --         dc.value,
+        --         UNSIGNED
+        --     )
+        --     ELSE NULL
+        -- END AS value_int,
+        dc.parent,
+        0 AS depth,
+        1 AS truthy,
+        dc.type AS effective_type
+    FROM
+        dan_conds dc
+    WHERE
+        dc.parent IS NULL
+    UNION ALL
+    SELECT
+        child.id,
+        conds.root,
+        child.type,
+        child.value,
+        -- CASE
+        --     WHEN child.type = 'bancho-bm-id-eq'
+        --     AND child.value REGEXP '^[0-9]+$' THEN CONVERT(
+        --         child.value,
+        --         UNSIGNED
+        --     )
+        --     ELSE NULL
+        -- END AS value_int,
+        child.parent,
+        conds.depth + 1,
+        CASE
+            WHEN conds.type = 'not' THEN conds.truthy - 1
+            ELSE conds.truthy
+        END AS truthy,
+        CASE
+            WHEN MOD(
+                CASE
+                    WHEN conds.type = 'not' THEN conds.truthy - 1
+                    ELSE conds.truthy
+                END,
+                2
+            ) = 1
+            AND child.type IN (
+                'and',
+                'or'
+            ) THEN CASE
+                WHEN child.type = 'and' THEN 'or'
+                WHEN child.type = 'or' THEN 'and'
+                ELSE child.type
+            END
+            ELSE child.type
+        END AS effective_type
+    FROM
+        conds
+        JOIN dan_conds child
+        ON child.parent = conds.id
+)
+SELECT
+    *
+FROM
+    conds
+
+  `
+
+  // TODO deprecate after drizzle supports withRecursive
+  #virtualTableDanTreeAlias(name: string) {
+    return {
+      column: {
+        id: sql.raw(`${name}.id`).mapWith(Number),
+        root: sql.raw(`${name}.root`).mapWith(Number),
+        parent: sql.raw(`${name}.parent`).mapWith(Number),
+        type: sql.raw(`${name}.type`),
+        value: sql.raw(`${name}.value`),
+        truthy: sql.raw(`${name}.truthy`).mapWith(Boolean),
+        effectiveType: sql.raw(`${name}.effective_type`),
+      },
+      aliasedTable: sql.raw(`(${this.#danTreeRecursive}) ${name}`),
     }
   }
 }
