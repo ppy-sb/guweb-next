@@ -77,7 +77,7 @@ export const scoresSuspicion = mysqlTable('scores_suspicion', {
   }
 })
 
-export const dans = mysqlTable('dans', {
+export const dans = mysqlTable('sb_dans', {
   id: int('id').autoincrement().notNull().primaryKey(),
   name: varchar('name', { length: 128 }).notNull(),
   description: text('description'),
@@ -87,21 +87,21 @@ export const dans = mysqlTable('dans', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow().onUpdateNow(),
 })
 
-export const danConds = mysqlTable('dan_conds', {
+export const danConds = mysqlTable('sb_dan_conds', {
   id: int('id').autoincrement().notNull().primaryKey(),
   type: mysqlEnum('type', Object.values(OP) as OPTuple).notNull(),
   value: varchar('value', { length: 128 }).notNull(),
   parent: int('parent'),
 })
 
-export const requirementCondBindings = mysqlTable('requirement_cond_bindings', {
+export const requirementCondBindings = mysqlTable('sb_requirement_cond_bindings', {
   id: int('id').autoincrement().notNull().primaryKey(),
   type: mysqlEnum('achievement', ['pass', 'no-pause']).notNull(),
   danId: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   condId: int('cond').notNull().references(() => danConds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 })
 
-export const requirementClearedScores = mysqlTable('requirement_cleared_scores', {
+export const requirementClearedScores = mysqlTable('sb_requirement_cleared_scores', {
   scoreId: bigint('score_id', { mode: 'bigint', unsigned: true })
     .notNull()
     .references(() => scores.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
