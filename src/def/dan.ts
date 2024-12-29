@@ -17,12 +17,12 @@ export enum OP {
   NOT = 'not',
   ModeEq = 'mode-eq',
   Extends = 'extends',
-  BanchoBeatmapIdEq = 'bancho-bm-id-eq',
+  BanchoBeatmapIdEq = 'bancho/bm-id-eq',
   BeatmapMd5Eq = 'bm-md5-eq',
   NoPause = 'no-pause',
   AccGte = 'acc-gte',
   ScoreGte = 'score-gte',
-  WithStableMod = 'with-stable-mod',
+  WithStableMod = 'stable/with-mod',
 }
 
 export interface CondBase<O> {
