@@ -565,7 +565,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         1 AS truthy,
         dc.type AS effective_type
     FROM
-        dan_conds dc
+        ${getTableName(schema.danConds)} dc
     WHERE
         dc.parent IS NULL
     UNION ALL
@@ -608,7 +608,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         END AS effective_type
     FROM
         conds
-        JOIN dan_conds child
+        JOIN ${getTableName(schema.danConds)} child
         ON child.parent = conds.id
 )
 SELECT
