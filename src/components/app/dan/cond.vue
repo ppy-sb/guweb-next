@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const _op = $enum(OP)
-
+const $requirement = $enum(Requirement)
 const drag = ref(false)
 
 const cond = defineModel<Cond>()
@@ -117,8 +117,8 @@ function selectCond() {
             <option disabled value="">
               select
             </option>
-            <option v-for="ach in $enum(Requirement).getValues()" :key="ach" :value="ach">
-              {{ Requirement[ach] }}
+            <option v-for="ach in $requirement.getValues()" :key="ach" :value="ach">
+              {{ $requirement.getKeyOrDefault(ach, '?') }}
             </option>
           </select>
         </div>
