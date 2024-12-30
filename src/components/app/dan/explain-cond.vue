@@ -14,6 +14,7 @@ const fmtScore = createScoreFormatter()
 
 const dan = localeKey.root.dan
 const $cond = dan.cond
+const $requirement = $enum(Requirement)
 
 const inline = [
   OP.AccGte,
@@ -50,7 +51,7 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
 
     <i18n-t v-else-if="cond.type === OP.Extends" tag="span" :keypath="$cond[cond.type].__path__" class="bg-secondary/20 dark:bg-secondary/80text-secondary-content px-1 rounded">
       <template #val>
-        <span class="font-bold">{{ Requirement[cond.val] }}</span>
+        <span class="font-bold">{{ $requirement.getKeyOrDefault(cond.val, '?') }}</span>
       </template>
     </i18n-t>
 

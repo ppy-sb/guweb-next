@@ -1,3 +1,4 @@
+import { $enum } from 'ts-enum-util'
 import { BeatmapSource } from '~/def/beatmap'
 import {
   type ConcreteCond,
@@ -16,6 +17,9 @@ import {
 } from '~/def/dan'
 import { StableMod } from '~/def/score'
 import type { Mode } from '~/def'
+
+const $op = $enum(OP)
+const $req = $enum(Requirement)
 
 export function pretty_result(
   res: RequirementResult[],
@@ -50,7 +54,7 @@ function fmtDetail(
   let msg: string[] = []
 
   if ('type' in detail) {
-    msg.push(`${sp(indent)}Achievement(${Requirement[detail.type]}):`)
+    msg.push(`${sp(indent)}Achievement(${$req.getKeyOrDefault(detail.type)}):`)
     indent += 1
   }
   if ('cond' in detail) {
@@ -87,7 +91,12 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
     case OP.ModeEq:
     {
       const { val } = cond
-      return `${OP[type]} ${val}, ${value}`
+      return `${$op.getKeyOrDefault(type)} ${val}, ${value}`
+    }
+
+    case OP.RulesetEq: {
+      const { val } = cond
+      return `${$req.getKeyOrDefault(type)} ${val}, ${value}`
     }
 
     case OP.Remark:
@@ -99,25 +108,25 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
     case OP.WithStableMod:
     {
       const { val } = cond
-      return `${OP[type]} ${StableMod[val]}`
+      return `${$op.getKeyOrDefault(type)} ${StableMod[val]}`
     }
 
     // op without attribute
     case OP.NoPause:
-      return `${OP[type]}`
+      return `${$op.getKeyOrDefault(type)}`
 
     // referenced op
     case OP.Extends:
     {
       const { val } = cond
-      return `${OP[type]} Achievement(${Requirement[val]})`
+      return `${$op.getKeyOrDefault(type)} Achievement(${$req.getKeyOrDefault(val)})`
     }
 
     // deep op
     case OP.AND:
     case OP.OR:
     case OP.NOT:
-      return `${OP[type]}`
+      return `${$op.getKeyOrDefault(type)}`
 
     default:
       // return '???'
@@ -218,6 +227,14 @@ export function run_cond<C extends Cond, AB extends RequirementCondBinding<Requi
         value: val,
       } as DetailResult<C, AB>
     }
+    case OP.RulesetEq: {
+      const { val } = cond
+      return {
+        cond,
+        result: score.ruleset === val,
+        value: val,
+      } as DetailResult<C, AB>
+    }
     case OP.Remark: {
       const { remark, cond: _cond } = cond
       const result = run_cond(_cond, achievements, score, results)
@@ -264,7 +281,7 @@ export function run_cond<C extends Cond, AB extends RequirementCondBinding<Requi
           ({ type: achievement }) => achievement === val
         )?.cond
         ?? raiseError(
-          `extending achievement (${Requirement[val]}) not found`
+          `extending achievement (${$req.getKeyOrDefault(val)}) not found`
         )
       const cached = results.find(i => i.cond === _cond)
       if (cached) {
@@ -348,6 +365,7 @@ export function validateCond<T extends Cond>(cond: T): T {
     case OP.ScoreGte:
     case OP.ModeEq:
     case OP.WithStableMod:
+    case OP.RulesetEq:
     case OP.Extends:
       return { type: cond.type, val: cond.val } as T
 

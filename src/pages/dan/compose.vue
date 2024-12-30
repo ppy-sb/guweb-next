@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
+import { $enum } from 'ts-enum-util'
 import { validateUsecase } from '~/common/utils/dan'
 import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
@@ -7,6 +8,8 @@ import type { AppRouter } from '~/server/trpc/routers'
 definePageMeta({
   middleware: ['auth'],
 })
+
+const $requirement = $enum(Requirement)
 
 type RouterOutput = inferRouterOutputs<AppRouter>
 const requirements = [Requirement.Pass, Requirement.NoPause]
@@ -144,7 +147,7 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
               :selected="ac === ach.type"
               :disabled="!!compose.requirements.find(i => i.type === ac)"
             >
-              {{ Requirement[ac] }}
+              {{ $requirement.getKeyOrDefault(ac) }}
             </option>
           </select>
         </div>
@@ -221,7 +224,7 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
         class="table table-zebra caption-top"
       >
         <caption class="py-2 bg-base-200">
-          {{ Requirement[ach.requirement] }}
+          {{ $requirement.getKeyOrDefault(ach.requirement) }}
         </caption>
         <thead>
           <tr>

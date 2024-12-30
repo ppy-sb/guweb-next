@@ -1,10 +1,12 @@
+// keep relative imports for drizzle-kit
 import { relations } from 'drizzle-orm'
-import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, tinyint, varchar } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar } from 'drizzle-orm/mysql-core'
 import { clans, scores, users } from '../../bancho.py/drizzle/schema'
-import { OP } from '../../../../def/dan'
+import { OP, Requirement } from '../../../../def/dan'
 import { type ObjValueTuple } from '../../../../def/good-to-have'
 
 type OPTuple = ObjValueTuple<typeof OP>
+type RequirementTuple = ObjValueTuple<typeof Requirement>
 export {
   achievements, beatmaps, channels,
   clans, clansRelations, clientHashes, clientHashesRelations, comments, commentsRelations, emailTokens, favourites, favouritesRelations,
@@ -96,7 +98,7 @@ export const danConds = mysqlTable('sb_dan_conds', {
 
 export const requirementCondBindings = mysqlTable('sb_requirement_cond_bindings', {
   id: int('id').autoincrement().notNull().primaryKey(),
-  type: mysqlEnum('achievement', ['pass', 'no-pause']).notNull(),
+  type: mysqlEnum('requirement', Object.values(Requirement) as RequirementTuple).notNull(),
   danId: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   condId: int('cond').notNull().references(() => danConds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 })

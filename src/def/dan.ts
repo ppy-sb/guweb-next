@@ -3,11 +3,11 @@ import {
   type BeatmapCompact,
 } from './beatmap'
 import type { UserCompact } from './user'
-import { type Mode } from '.'
+import { type Mode, type Ruleset } from '.'
 
 export enum Requirement {
-  Pass,
-  NoPause,
+  Pass = 'pass',
+  NoPause = 'no-pause',
 }
 
 export enum OP {
@@ -16,6 +16,7 @@ export enum OP {
   AND = 'and',
   NOT = 'not',
   ModeEq = 'mode-eq',
+  RulesetEq = 'ruleset-eq',
   Extends = 'extends',
   BanchoBeatmapIdEq = 'bancho/bm-id-eq',
   BeatmapMd5Eq = 'bm-md5-eq',
@@ -48,6 +49,7 @@ export type UConcreteCond =
   | ConcreteCond<OP.ScoreGte, number>
   | ConcreteCond<OP.WithStableMod, StableMod>
   | ConcreteCond<OP.ModeEq, Mode>
+  | ConcreteCond<OP.RulesetEq, Ruleset>
   | CondBase<OP.NoPause>
 
 type UWrappedCond =
