@@ -3,6 +3,7 @@ import { IdTransformable, ScoreIdTransformable } from './@extends'
 import { type Dan, type DatabaseDan, type Requirement } from '~/def/dan'
 import { type Pagination } from '~/def/pagination'
 import { type UserCompact } from '~/def/user'
+import type { Mode, Ruleset } from '~/def'
 
 export namespace DanProvider {
   export interface QualifiedScore<Id, ScoreId> {
@@ -34,7 +35,7 @@ export abstract class DanProvider<Id, ScoreId> extends Mixin(IdTransformable, Sc
   abstract getQualifiedScores(id: Id): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>[]>
   abstract delete(id: Id): Promise<void>
 
-  abstract search(opt: { keyword: string } & Pagination): Promise<Array<DatabaseDan<Id>>>
+  abstract search(opt: { keyword: string; mode?: Mode; ruleset?: Ruleset; rulesetDefaultsToStandard?: boolean } & Pagination): Promise<Array<DatabaseDan<Id>>>
 
   abstract runCustomDan(opt: Dan): Promise<Array<DanProvider.RequirementQualifiedScore<Id, ScoreId>>>
 

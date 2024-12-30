@@ -1,5 +1,5 @@
 import { aliasedTable, and, asc, desc, eq, getTableName, inArray, like, or, sql } from 'drizzle-orm'
-import type { Id, ScoreId } from '../'
+import { type Id, type ScoreId, hasRuleset } from '../'
 import { BanchoPyScoreStatus } from '../../bancho.py/enums'
 import { useDrizzle } from '../../bancho.py/server/source/drizzle'
 import {
@@ -17,7 +17,7 @@ import { GucchoError } from '~/def/messages'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, OP, Requirement } from '~/def/dan'
 import { DanProvider as Base } from '$base/server'
 import { validateCond } from '~/common/utils/dan'
-import { type Mode, type Ruleset } from '~/def'
+import { Mode, Ruleset } from '~/def'
 
 export class DanProvider extends Base<Id, ScoreId> {
   static readonly idToString = idToString
@@ -152,60 +152,130 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async search(a: { keyword: string; page: Id; perPage: Id }): Promise<DatabaseDan<Id>[]> {
+  async search(a: { keyword: string; mode?: Mode; ruleset?: Ruleset; page: Id; perPage: Id; rulesetDefaultsToStandard?: boolean }): Promise<DatabaseDan<Id>[]> {
     return this.drizzle.transaction(async (tx) => {
       const recursiveCond = this.#virtualTableDanTreeAlias('cond_tree')
 
       const bmId = aliasedTable(schema.beatmaps, 'b_id')
       const bmMd5 = aliasedTable(schema.beatmaps, 'b_md5')
 
-      const result = await tx.selectDistinct({
-        id: schema.dans.id,
-      })
+      // const sq_md5 = tx.$with('sq_md5').as(
+      //   tx.select({
+      //     md5: schema.scores.mapMd5,
+      //     mode: schema.scores.mode,
+      //     count: count().as('count_sq_md5'),
+      //   })
+      //     .from(schema.scores)
+      //     .groupBy(schema.scores.mapMd5, schema.scores.mode)
+      // )
+
+      // const sq_bid = tx.$with('sq_bid').as(
+      //   tx.select({
+      //     bid: schema.beatmaps.id,
+      //     mode: schema.scores.mode,
+      //     count: count().as('count_sq_bid'),
+      //   })
+      //     .from(schema.scores)
+      //     .innerJoin(schema.beatmaps, eq(schema.scores.mapMd5, schema.beatmaps.md5))
+      //     .groupBy(schema.beatmaps.id, schema.scores.mode)
+      // )
+
+      const result = await tx
+        // .with(sq_md5, sq_bid)
+        .select({
+          id: schema.dans.id,
+        })
         .from(schema.dans)
         .innerJoin(schema.requirementCondBindings, eq(schema.dans.id, schema.requirementCondBindings.danId))
         .innerJoin(recursiveCond.aliasedTable, eq(recursiveCond.column.root, schema.requirementCondBindings.condId))
         // cannot use OR here because it will prevent index usage.
         .leftJoin(bmId, and(eq(recursiveCond.column.type, OP.BanchoBeatmapIdEq), eq(bmId.id, recursiveCond.column.value), eq(bmId.server, 'osu!')))
         .leftJoin(bmMd5, and(eq(recursiveCond.column.type, OP.BeatmapMd5Eq), eq(bmMd5.md5, recursiveCond.column.value)))
+        // .leftJoin(sq_bid, eq(bmId.id, sq_bid.bid))
+        // .leftJoin(sq_md5, eq(bmMd5.md5, sq_md5.md5))
         .where(
-          or(
-            // search name
-            like(schema.dans.name, `%${a.keyword}%`),
-            // search description
-            like(schema.dans.description, `%${a.keyword}%`),
+          and(
 
-            // search conditions
-            and(
+            // keyword
+            or(
+              // search name
+              like(schema.dans.name, `%${a.keyword}%`),
+
+              // search description
+              like(schema.dans.description, `%${a.keyword}%`),
+
+              // search conditions
+              and(
               // must be truthy conditions
-              eq(recursiveCond.column.truthy, 1),
+                eq(recursiveCond.column.truthy, 1),
 
-              or(
-              // mode eq 'mania'
-              // bancho beatmap id eq
-              // beatmap md5 eq
-                and(
-                  inArray(recursiveCond.column.type, [
-                    OP.ModeEq,
-                    OP.BanchoBeatmapIdEq,
-                    OP.BeatmapMd5Eq,
-                  ]),
-                  eq(recursiveCond.column.value, a.keyword),
-                ),
-
-                // further search matched beatmaps
                 or(
-                  like(bmId.artist, `%${a.keyword}%`),
-                  like(bmId.title, `%${a.keyword}%`),
-                  like(bmId.creator, `%${a.keyword}%`),
-                  like(bmMd5.artist, `%${a.keyword}%`),
-                  like(bmMd5.title, `%${a.keyword}%`),
-                  like(bmMd5.creator, `%${a.keyword}%`),
-                ),
-              )
-            ),
+                  // mode eq 'mania'
+                  // bancho beatmap id eq
+                  // beatmap md5 eq
+                  and(
+                    inArray(recursiveCond.column.type, [
+                      OP.ModeEq,
+                      OP.BanchoBeatmapIdEq,
+                      OP.BeatmapMd5Eq,
+                    ]),
+                    eq(recursiveCond.column.value, a.keyword),
+                  ),
 
+                  // further search matched beatmaps
+                  or(
+                    like(bmId.artist, `%${a.keyword}%`),
+                    like(bmId.title, `%${a.keyword}%`),
+                    like(bmId.creator, `%${a.keyword}%`),
+                    like(bmId.diff, `%${a.keyword}%`),
+                    like(bmId.filename, `%${a.keyword}%`),
+                    like(bmMd5.artist, `%${a.keyword}%`),
+                    like(bmMd5.title, `%${a.keyword}%`),
+                    like(bmMd5.creator, `%${a.keyword}%`),
+                    like(bmId.diff, `%${a.keyword}%`),
+                    like(bmId.filename, `%${a.keyword}%`),
+                  ),
+                )
+              ),
+
+            )
+              ?.if(a.keyword),
+
+            // filter mode
+            and(
+              eq(recursiveCond.column.truthy, 1),
+              eq(recursiveCond.column.type, OP.ModeEq),
+              eq(recursiveCond.column.value, a.mode),
+            )
+              ?.if(a.mode),
+
+            // filter ruleset
+            and(
+              eq(recursiveCond.column.truthy, 1),
+              eq(recursiveCond.column.type, OP.RulesetEq),
+              eq(recursiveCond.column.value, a.ruleset),
+            )
+              ?.if(a.ruleset)
+              ?.if(a.ruleset === Ruleset.Standard && !a.rulesetDefaultsToStandard)
+              // validate ruleset and server support status
+              ?.if(
+                (a.mode && a.ruleset)
+                  ? hasRuleset(a.mode, a.ruleset)
+                  : true
+              )
+              // Mania only supports standard ruleset so ruleset is not required
+              ?.if(a.mode !== Mode.Mania),
           )
+        )
+        // .orderBy(
+        //   desc(sq_md5.count),
+        //   desc(sq_bid.count),
+        // )
+        .groupBy(schema.dans.id)
+        .orderBy(
+          // desc(schema.requirementCondBindings.id), // rule changed,
+          desc(schema.dans.updatedAt), // description changed
+          desc(schema.dans.id) // description changed
         )
         .limit(a.perPage)
         .offset(a.page * a.perPage)

@@ -1,7 +1,8 @@
-import { any, number, object, string } from 'zod'
+import { any, boolean, number, object, string } from 'zod'
 import { type DanProvider as BaseDanProvider } from '../../backend/$base/server'
 import { staffProcedure } from '../middleware/role'
 import { router as _router, publicProcedure } from '../trpc'
+import { zodMode, zodRuleset } from '../shapes'
 import { validateUsecase } from '~/common/utils/dan'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, type Requirement } from '~/def/dan'
 import { Feature } from '~/def/features'
@@ -29,6 +30,9 @@ export const router = _router({
   search: publicProcedure
     .input(object({
       keyword: string(),
+      mode: zodMode.optional(),
+      ruleset: zodRuleset.optional(),
+      rulesetDefaultsToStandard: boolean().optional().default(false),
       page: number().min(0).max(5).default(0),
       perPage: number().min(1).max(10).default(10),
     }))
