@@ -17,7 +17,7 @@ import { GucchoError } from '~/def/messages'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, OP, Requirement } from '~/def/dan'
 import { DanProvider as Base } from '$base/server'
 import { validateCond } from '~/common/utils/dan'
-import { type Mode } from '~/def'
+import { type Mode, type Ruleset } from '~/def'
 
 export class DanProvider extends Base<Id, ScoreId> {
   static readonly idToString = idToString
@@ -378,7 +378,7 @@ export class DanProvider extends Base<Id, ScoreId> {
           .values({
             danId: id,
             condId: rootCondId,
-            type: r.type === Requirement.NoPause ? 'no-pause' : 'pass',
+            type: r.type,
           })
       }
 
@@ -679,10 +679,16 @@ function transformCond(condNode: CondNode): Cond {
         val: value as Mode,
       }
 
+    case OP.RulesetEq:
+      return {
+        type,
+        val: value as Ruleset,
+      }
+
     case OP.Extends:
       return {
         type,
-        val: Number(value) as Requirement,
+        val: value as Requirement,
       }
 
     case OP.BeatmapMd5Eq:
@@ -694,6 +700,9 @@ function transformCond(condNode: CondNode): Cond {
       return {
         type,
       }
+
+    default:
+      assertNotReachable(type)
   }
 }
 
