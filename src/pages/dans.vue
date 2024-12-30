@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { $enum } from 'ts-enum-util'
 import { type DatabaseDan, Requirement } from '../def/dan'
 import type { DanProvider } from '../server/backend/$base/server'
 
@@ -8,6 +9,8 @@ const enum State {
   Idle,
   Loading,
 }
+
+const $requirement = $enum(Requirement)
 
 const app = useNuxtApp()
 const { t } = useI18n()
@@ -101,7 +104,7 @@ zh-CN:
           <div v-for="requirement in item.requirements" :key="requirement.id" class="border-l-4 border-secondary ps-3">
             <p class="mb-2">
               <span>{{ t('achievement') }}</span>
-              <span class="font-bold">{{ Requirement[requirement.type] }}</span>
+              <span class="font-bold">{{ $requirement.getKeyOrDefault(requirement.type, '?') }}</span>
             </p>
             <app-dan-explain-cond :cond="requirement.cond" />
             <template v-if="getLoadingState(item) === State.Idle || getLoadingState(item) === State.Loading">
