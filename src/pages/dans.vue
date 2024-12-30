@@ -2,6 +2,7 @@
 import { $enum } from 'ts-enum-util'
 import { type DatabaseDan, Requirement } from '../def/dan'
 import type { DanProvider } from '../server/backend/$base/server'
+import { Mode, Ruleset } from '../def'
 
 // eslint-disable-next-line antfu/no-const-enum
 const enum State {
@@ -11,15 +12,21 @@ const enum State {
 }
 
 const $requirement = $enum(Requirement)
-
+const tMode = localeKey.root.mode
+const tRule = localeKey.root.ruleset
 const app = useNuxtApp()
+const server = useAdapterConfig()
 const { t } = useI18n()
 const r = useRoute()
 const query = ref({
   keyword: r.query.s?.toString() ?? '',
   page: 0,
   perPage: 10,
+  mode: undefined as Mode | undefined,
+  ruleset: undefined as Ruleset | undefined,
+  rulesetDefaultsToStandard: false,
 })
+
 const { data, refresh } = await app.$client.dan.search.useQuery(query)
 
 const fmtScore = createNumberFormatter()
@@ -55,6 +62,10 @@ en-GB:
   detail: Detail
   qf-scores: Qualified Scores (best 10)
   load-qualified-scores: load qualified scores
+  mode: Mode...
+  ruleset: Rule...
+  unset: Unset
+  treat-no-ruleset-cond-as-standard: treat dans with no ruleset requirement as standard
 
 zh-CN:
   search-text: 搜索段位成就...
@@ -63,13 +74,51 @@ zh-CN:
   detail: 详细
   qf-scores: 满足条件的成绩 (前 10)
   load-qualified-scores: 加载满足条件的成绩
+  mode: 模式
+  ruleset: 玩法
+  unset: 未指定
+  treat-no-ruleset-cond-as-standard: 将无玩法要求的段位视为std端位
 
 # TODO fr, DE
 </i18n>
 
 <template>
-  <section class="container mx-auto space-y-8 custom-container">
+  <section class="container px-2 mx-auto space-y-8 custom-container">
     <form :action="useRequestURL().href" method="get" @submit.prevent="refresh()">
+      <div class="grid grid-cols-4 pb-2 space-x-2 gap-y-2 md:grid-cols-4 lg:grid-cols-12">
+        <div class="col-span-2 form-control">
+          <div class="label">
+            <span class="label-text">{{ t('mode') }}</span>
+          </div>
+          <select id="" v-model="query.mode" name="mode" class="select select-bordered" @change="() => refresh()">
+            <option :value="undefined">
+              {{ t('unset') }}
+            </option>
+            <option v-for="mode in Object.values(Mode)" :key="mode" :value="mode">
+              {{ t(tMode[mode].__path__) }}
+            </option>
+          </select>
+        </div>
+        <div class="col-span-2 form-control">
+          <div class="label">
+            <span class="label-text">{{ t('ruleset') }}</span>
+          </div>
+          <select id="" v-model="query.ruleset" name="ruleset" class="select select-bordered" @change="() => refresh()">
+            <option :value="undefined">
+              {{ t('unset') }}
+            </option>
+            <option v-for="ruleset in Object.values(Ruleset)" :key="ruleset" :value="ruleset" :disabled="query.mode ? !server.hasRuleset(query.mode, ruleset) : false">
+              {{ t(tRule[ruleset].__path__) }}
+            </option>
+          </select>
+        </div>
+        <div class="justify-end col-span-6 md:col-span-4 form-control">
+          <label class="justify-start gap-2 cursor-pointer label">
+            <span class="label-text">{{ t('treat-no-ruleset-cond-as-standard') }}</span>
+            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle">
+          </label>
+        </div>
+      </div>
       <label for="keyword" class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">{{ t('search') }}</label>
       <div class="relative">
         <div class="absolute inset-y-0 flex items-center pointer-events-none start-0 ps-3">
