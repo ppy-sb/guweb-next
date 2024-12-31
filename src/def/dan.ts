@@ -137,9 +137,10 @@ export type RequirementResult<AB extends RequirementCondBinding<Requirement, Con
 
 export type DatabaseRequirementResult<I, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> = RequirementResult<RCBinding> & WithId<I>
 
-export type ValidatingScore = ScoreCompact<any, Mode.Mania> & {
+export type ValidatingScore = ScoreCompact<any, Mode> & {
   beatmap: BeatmapCompact<any, any>
   nonstop: boolean
   player: UserCompact<any>
   mode: Mode
+  ruleset: Ruleset
 }
