@@ -1,3 +1,4 @@
+import { GucchoError } from '~/def/messages'
 import { useSession } from '~/store/session'
 
 export default defineNuxtRouteMiddleware((to) => {
@@ -8,6 +9,7 @@ export default defineNuxtRouteMiddleware((to) => {
       query: {
         redirect: to.fullPath,
       },
+      message: fromGucchoErrorCode(GucchoError.YouNeedToLogin),
     }
 
     return returnValue
