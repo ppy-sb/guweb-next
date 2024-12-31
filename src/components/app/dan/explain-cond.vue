@@ -109,7 +109,7 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
       <div
         class="border-l-4 inline-block my-1" :class="{
           'border-neutral ps-3': cond.type === OP.AND,
-          'border-accent/30 bg-accent/5 rounded px-3 py-2': cond.type === OP.OR,
+          'border-accent/30 bg-accent/5 rounded-r px-3 py-2': cond.type === OP.OR,
         }"
       >
         <template v-for="_cond, i in cond.cond" :key="i">
