@@ -1,4 +1,5 @@
 import { aliasedTable, and, asc, desc, eq, getTableName, inArray, like, or, sql } from 'drizzle-orm'
+import { danSQLChunks } from '../utils/sql-dan'
 import { type Id, type ScoreId, hasRuleset } from '../'
 import { BanchoPyScoreStatus } from '../../bancho.py/enums'
 import { useDrizzle } from '../../bancho.py/server/source/drizzle'
@@ -11,7 +12,6 @@ import {
   toScore,
 } from '../../bancho.py/transforms'
 import * as schema from '../drizzle/schema'
-import { danSQLChunks } from '~/server/common/sql-dan'
 import { type UserCompact } from '~/def/user'
 import { GucchoError } from '~/def/messages'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, OP, Requirement } from '~/def/dan'

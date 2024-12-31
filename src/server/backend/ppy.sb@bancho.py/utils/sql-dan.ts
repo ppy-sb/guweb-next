@@ -1,10 +1,12 @@
-import { type SQL, and, eq, gte, not, or, sql } from 'drizzle-orm'
-import { toBanchoPyMode } from '../backend/bancho.py/transforms'
-import { Ruleset } from '../../def'
+import { type SQL, and, eq, gte, inArray, not, or, sql } from 'drizzle-orm'
+import { toBanchoPyMode } from '../../bancho.py/transforms'
+import { hasRuleset } from '../'
+import { Mode, Ruleset } from '~/def'
 import type * as schema from '~/server/backend/bancho.py/drizzle/schema'
 import {
   type Cond,
-  OP, Requirement,
+  OP,
+  type Requirement,
   type RequirementCondBinding,
 } from '~/def/dan'
 
@@ -16,7 +18,7 @@ export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<R
     beatmaps: typeof schema.beatmaps
     sources: typeof schema.sources
   }
-): SQL {
+): SQL | undefined {
   const { type } = cond
   switch (type) {
     case OP.BeatmapMd5Eq: {
@@ -46,14 +48,34 @@ export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<R
     }
     case OP.ModeEq: {
       const { val } = cond
-      const anyRuleset = toBanchoPyMode(val, Ruleset.Standard)
-      return eq(table.scores.mode, anyRuleset)
+      return or(
+        eq(table.scores.mode, toBanchoPyMode(val, Ruleset.Standard)),
+        // cannot use .if() due to toBanchoPyMode will throw Error first
+        hasRuleset(val, Ruleset.Relax) ? eq(table.scores.mode, toBanchoPyMode(val, Ruleset.Relax)) : undefined,
+        hasRuleset(val, Ruleset.Autopilot) ? eq(table.scores.mode, toBanchoPyMode(val, Ruleset.Autopilot)) : undefined,
+      )
+    }
+    case OP.RulesetEq: {
+      const { val } = cond
+      return inArray(
+        table.scores.mode,
+        [
+          toBanchoPyMode(Mode.Osu, val),
+          toBanchoPyMode(Mode.Taiko, val),
+          toBanchoPyMode(Mode.Fruits, val),
+          toBanchoPyMode(Mode.Mania, val),
+        ]
+      )
     }
     case OP.Remark: {
       return danSQLChunks(cond.cond, achievements, table)
     }
     case OP.NOT: {
-      return not(danSQLChunks(cond.cond, achievements, table))
+      const _cond = danSQLChunks(cond.cond, achievements, table)
+      if (!_cond) {
+        return undefined
+      }
+      return not(_cond)
     }
     case OP.AND: {
       const sqlChunks = cond.cond.map(c => danSQLChunks(c, achievements, table))
@@ -69,7 +91,7 @@ export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<R
         ({ type: achievement }) => achievement === val
       )?.cond
         ?? raiseError(
-          `extending achievement (${Requirement[val]}) not found`
+          `extending achievement (${val}) not found`
         )
       if (_cond === cond) {
         raiseError('loop detected')
