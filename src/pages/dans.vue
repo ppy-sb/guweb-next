@@ -115,7 +115,7 @@ zh-CN:
         <div class="justify-end col-span-6 md:col-span-4 form-control">
           <label class="justify-start gap-2 cursor-pointer label">
             <span class="label-text">{{ t('treat-no-ruleset-cond-as-standard') }}</span>
-            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle">
+            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle" @change="() => refresh()">
           </label>
         </div>
       </div>
