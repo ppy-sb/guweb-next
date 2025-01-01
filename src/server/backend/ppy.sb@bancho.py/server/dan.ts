@@ -31,13 +31,6 @@ export class DanProvider extends Base<Id, ScoreId> {
     id: Id,
   tx: Omit<typeof this.drizzle, '$client'> = this.drizzle
   ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
-    // const q2 = await tx.select()
-    //   .from(schema.dans)
-    //   .innerJoin(schema.requirementCondBindings, eq(schema.dans.id, schema.requirementCondBindings.danId))
-    //   .where(
-    //     eq(schema.dans.id, id)
-    //   )
-    // Fetch the dan record
     const dan = await tx.query.dans.findFirst({
       where(fields, operators) {
         return operators.eq(fields.id, id)
@@ -57,10 +50,10 @@ export class DanProvider extends Base<Id, ScoreId> {
       throwGucchoError(GucchoError.DanNotFound)
     }
 
-    return await this.getDanWithRequirements(dan, tx)
+    return await this.#getDanWithRequirements(dan, tx)
   }
 
-  async getDanWithRequirements(dan: {
+  async #getDanWithRequirements(dan: {
     id: number
     name: string
     creator: number | null
@@ -78,7 +71,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     // Extract root condition IDs from requirements
     const rootCondIds = dan.requirements.map(r => r.condId)
 
-    const built = await this.fetchAndBuildCondTree(rootCondIds, tx)
+    const built = await this.#fetchAndBuildCondTree(rootCondIds, tx)
 
     const requirementsWithConds = dan.requirements.map((req) => {
       const cond = built[req.condId]
@@ -100,7 +93,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     }
   }
 
-  async fetchAndBuildCondTree(ids: Id[], tx: Omit<typeof this.drizzle, '$client'>): Promise<Record<Id, Cond>> {
+  async #fetchAndBuildCondTree(ids: Id[], tx: Omit<typeof this.drizzle, '$client'>): Promise<Record<Id, Cond>> {
     // Fetch all conditions starting from rootCondIds using a recursive CTE
     const [conditionsResult] = await tx.execute(
       sql`
@@ -154,10 +147,17 @@ export class DanProvider extends Base<Id, ScoreId> {
 
   async search(a: { keyword: string; mode?: Mode; ruleset?: Ruleset; page: Id; perPage: Id; rulesetDefaultsToStandard?: boolean }): Promise<DatabaseDan<Id>[]> {
     return this.drizzle.transaction(async (tx) => {
-      const recursiveCond = this.#virtualTableDanTreeAlias('cond_tree')
-
+      const dans = aliasedTable(schema.dans, 'd')
+      const searchCondTree = this.#virtualTableDanTreeAlias('cond_tree')
+      const danCondBinding = aliasedTable(schema.requirementCondBindings, 'dc')
       const bmId = aliasedTable(schema.beatmaps, 'b_id')
       const bmMd5 = aliasedTable(schema.beatmaps, 'b_md5')
+
+      const dansLateral = aliasedTable(schema.dans, 'd_l')
+      const condTreeLateral = this.#virtualTableDanTreeSimpleAlias('full_tree')
+      const danCondBindingLateral = aliasedTable(schema.requirementCondBindings, 'dc_l')
+      const bmIdLateral = aliasedTable(schema.beatmaps, 'b_id_l')
+      const bmMd5Lateral = aliasedTable(schema.beatmaps, 'b_md5_l')
 
       // const sq_md5 = tx.$with('sq_md5').as(
       //   tx.select({
@@ -183,14 +183,66 @@ export class DanProvider extends Base<Id, ScoreId> {
       const result = await tx
         // .with(sq_md5, sq_bid)
         .select({
-          id: schema.dans.id,
+          id: dans.id,
+          name: dans.name,
+          description: dans.description,
+          creator: dans.creator,
+          createdAt: dans.createdAt,
+          updater: dans.updater,
+          updatedAt: dans.updatedAt,
+
+          possibleBids: sql<Id[]>`
+            CAST(
+              CONCAT(
+                '[',
+                GROUP_CONCAT(
+                  DISTINCT
+                    CASE
+                        WHEN ${bmIdLateral.id} THEN ${bmIdLateral.id}
+                        ELSE ${bmMd5Lateral.id}
+                    END
+                ),
+                ']'
+              ) AS JSON
+            )`.as('possible_bids'),
+
+          requirements: sql<Array<{ type: Requirement; rootCond: Id; id: Id }>>`
+            CAST(
+              CONCAT(
+                '[',
+                GROUP_CONCAT(
+                  DISTINCT JSON_OBJECT(
+                    'id', ${danCondBindingLateral.id},
+                    'type', ${danCondBindingLateral.type},
+                    'rootCond', ${danCondBindingLateral.condId}
+                  )
+                ),
+                ']'
+              ) AS JSON
+            )`.as('requirements'),
+
+          fullTree: sql<Array<{ id: Id; type: OP; value: string; parent: Id }>>`JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'id', ${condTreeLateral.column.id},
+                'type', ${condTreeLateral.column.type},
+                'value', ${condTreeLateral.column.value},
+                'parent', ${condTreeLateral.column.parent}
+              )
+            )`.as('full_tree'),
+
         })
-        .from(schema.dans)
-        .innerJoin(schema.requirementCondBindings, eq(schema.dans.id, schema.requirementCondBindings.danId))
-        .innerJoin(recursiveCond.aliasedTable, eq(recursiveCond.column.root, schema.requirementCondBindings.condId))
+        .from(dans)
+        .innerJoin(danCondBinding, eq(dans.id, danCondBinding.danId))
+        .innerJoin(searchCondTree.aliasedTable, eq(searchCondTree.column.root, danCondBinding.condId))
         // cannot use OR here because it will prevent index usage.
-        .leftJoin(bmId, and(eq(recursiveCond.column.type, OP.BanchoBeatmapIdEq), eq(bmId.id, recursiveCond.column.value), eq(bmId.server, 'osu!')))
-        .leftJoin(bmMd5, and(eq(recursiveCond.column.type, OP.BeatmapMd5Eq), eq(bmMd5.md5, recursiveCond.column.value)))
+        .leftJoin(bmId, and(eq(searchCondTree.column.type, OP.BanchoBeatmapIdEq), eq(bmId.id, searchCondTree.column.value), eq(bmId.server, 'osu!')))
+        .leftJoin(bmMd5, and(eq(searchCondTree.column.type, OP.BeatmapMd5Eq), eq(bmMd5.md5, searchCondTree.column.value)))
+
+        .innerJoin(dansLateral, eq(dans.id, dansLateral.id))
+        .innerJoin(danCondBindingLateral, eq(dansLateral.id, danCondBindingLateral.danId))
+        .innerJoin(condTreeLateral.aliasedTable, eq(danCondBindingLateral.condId, condTreeLateral.column.root))
+        .leftJoin(bmIdLateral, and(eq(condTreeLateral.column.type, OP.BanchoBeatmapIdEq), eq(bmIdLateral.id, condTreeLateral.column.value), eq(bmIdLateral.server, 'osu!')))
+        .leftJoin(bmMd5Lateral, and(eq(condTreeLateral.column.type, OP.BeatmapMd5Eq), eq(bmMd5Lateral.md5, condTreeLateral.column.value)))
         // .leftJoin(sq_bid, eq(bmId.id, sq_bid.bid))
         // .leftJoin(sq_md5, eq(bmMd5.md5, sq_md5.md5))
         .where(
@@ -199,27 +251,27 @@ export class DanProvider extends Base<Id, ScoreId> {
             // keyword
             or(
               // search name
-              like(schema.dans.name, `%${a.keyword}%`),
+              like(dans.name, `%${a.keyword}%`),
 
               // search description
-              like(schema.dans.description, `%${a.keyword}%`),
+              like(dans.description, `%${a.keyword}%`),
 
               // search conditions
               and(
               // must be truthy conditions
-                eq(recursiveCond.column.truthy, 1),
+                eq(searchCondTree.column.truthy, 1),
 
                 or(
                   // mode eq 'mania'
                   // bancho beatmap id eq
                   // beatmap md5 eq
                   and(
-                    inArray(recursiveCond.column.type, [
+                    inArray(searchCondTree.column.type, [
                       OP.ModeEq,
                       OP.BanchoBeatmapIdEq,
                       OP.BeatmapMd5Eq,
                     ]),
-                    eq(recursiveCond.column.value, a.keyword),
+                    eq(searchCondTree.column.value, a.keyword),
                   ),
 
                   // further search matched beatmaps
@@ -243,20 +295,20 @@ export class DanProvider extends Base<Id, ScoreId> {
 
             // filter mode
             and(
-              eq(recursiveCond.column.truthy, 1),
-              eq(recursiveCond.column.type, OP.ModeEq),
-              eq(recursiveCond.column.value, a.mode),
+              eq(searchCondTree.column.truthy, 1),
+              eq(searchCondTree.column.type, OP.ModeEq),
+              eq(searchCondTree.column.value, a.mode),
             )
               ?.if(a.mode),
 
             // filter ruleset
             and(
-              eq(recursiveCond.column.truthy, 1),
-              eq(recursiveCond.column.type, OP.RulesetEq),
-              eq(recursiveCond.column.value, a.ruleset),
+              eq(searchCondTree.column.truthy, 1),
+              eq(searchCondTree.column.type, OP.RulesetEq),
+              eq(searchCondTree.column.value, a.ruleset),
             )
               ?.if(a.ruleset)
-              ?.if(a.ruleset === Ruleset.Standard && !a.rulesetDefaultsToStandard)
+              ?.if(!((a.rulesetDefaultsToStandard && a.ruleset === Ruleset.Standard)))
               // validate ruleset and server support status
               ?.if(
                 (a.mode && a.ruleset)
@@ -271,24 +323,37 @@ export class DanProvider extends Base<Id, ScoreId> {
         //   desc(sq_md5.count),
         //   desc(sq_bid.count),
         // )
-        .groupBy(schema.dans.id)
+        .groupBy(dans.id)
         .orderBy(
-          // desc(schema.requirementCondBindings.id), // rule changed,
-          desc(schema.dans.updatedAt), // description changed
-          desc(schema.dans.id) // description changed
+          desc(dans.updatedAt),
+          desc(dans.id)
         )
         .limit(a.perPage)
         .offset(a.page * a.perPage)
 
-      const dans = await tx.query.dans
-        .findMany({
-          where: inArray(schema.dans.id, result.map(({ id }) => id)),
-          with: {
-            requirements: true,
-          },
-        })
+      if (!result.length) {
+        return []
+      }
 
-      return Promise.all(dans.map(d => this.getDanWithRequirements(d, tx)))
+      try {
+        return result.map((i) => {
+          const conds = this.#buildCondTreeMem(i.requirements.map(r => r.rootCond), i.fullTree)
+          return {
+            ...pick(i, ['id', 'name', 'createdAt', 'creator', 'description', 'updatedAt', 'updater']),
+            requirements: i.requirements.map((req) => {
+              return {
+                id: req.id,
+                type: req.type,
+                cond: conds[req.rootCond],
+              }
+            }),
+          }
+        })
+      }
+      catch (e) {
+        console.error(e)
+        throw e
+      }
     })
   }
 
@@ -617,20 +682,11 @@ export class DanProvider extends Base<Id, ScoreId> {
   // id | root | type | value | parent | depth | truthy | effective_type
   #danTreeRecursive = /* sql */`
   WITH RECURSIVE conds AS (
-    -- Modified CTE with value_int
     SELECT
         dc.id,
         dc.id AS root,
         dc.type,
         dc.value,
-        -- CASE
-        --     WHEN dc.type = 'bancho-bm-id-eq'
-        --     AND dc.value REGEXP '^[0-9]+$' THEN CONVERT(
-        --         dc.value,
-        --         UNSIGNED
-        --     )
-        --     ELSE NULL
-        -- END AS value_int,
         dc.parent,
         0 AS depth,
         1 AS truthy,
@@ -645,14 +701,6 @@ export class DanProvider extends Base<Id, ScoreId> {
         conds.root,
         child.type,
         child.value,
-        -- CASE
-        --     WHEN child.type = 'bancho-bm-id-eq'
-        --     AND child.value REGEXP '^[0-9]+$' THEN CONVERT(
-        --         child.value,
-        --         UNSIGNED
-        --     )
-        --     ELSE NULL
-        -- END AS value_int,
         child.parent,
         conds.depth + 1,
         CASE
@@ -686,11 +734,40 @@ SELECT
     *
 FROM
     conds
+  `
 
+  #danTreeFullSimple = /* sql */`
+  WITH RECURSIVE conds AS (
+    SELECT
+        dc.id,
+        dc.id AS root,
+        dc.type,
+        dc.value,
+        dc.parent
+    FROM
+        ${getTableName(schema.danConds)} dc
+    WHERE
+        dc.parent IS NULL
+    UNION ALL
+    SELECT
+        child.id,
+        conds.root,
+        child.type,
+        child.value,
+        child.parent
+    FROM
+        conds
+        JOIN ${getTableName(schema.danConds)} child
+        ON child.parent = conds.id
+)
+SELECT
+    *
+FROM
+    conds
   `
 
   // TODO deprecate after drizzle supports withRecursive
-  #virtualTableDanTreeAlias(name: string) {
+  #virtualTableDanTreeAlias<T extends string>(name: T) {
     return {
       column: {
         id: sql.raw(`${name}.id`).mapWith(Number),
@@ -702,7 +779,23 @@ FROM
         effectiveType: sql.raw(`${name}.effective_type`),
       },
       aliasedTable: sql.raw(`(${this.#danTreeRecursive}) ${name}`),
-    }
+      name,
+    } as const
+  }
+
+  // TODO deprecate after drizzle supports withRecursive
+  #virtualTableDanTreeSimpleAlias<T extends string>(name: T) {
+    return {
+      column: {
+        id: sql.raw(`${name}.id`).mapWith(Number),
+        root: sql.raw(`${name}.root`).mapWith(Number),
+        parent: sql.raw(`${name}.parent`).mapWith(Number),
+        type: sql.raw(`${name}.type`),
+        value: sql.raw(`${name}.value`),
+      },
+      aliasedTable: sql.raw(`(${this.#danTreeFullSimple}) ${name}`),
+      name,
+    } as const
   }
 }
 
