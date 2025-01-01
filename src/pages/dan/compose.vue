@@ -281,9 +281,6 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
       </table>
     </div>
   </section>
-  <dev-only>
-    {{ compose }}
-  </dev-only>
 </template>
 
 <style scoped>
