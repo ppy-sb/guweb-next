@@ -82,7 +82,7 @@ export const scoresSuspicion = mysqlTable('scores_suspicion', {
 export const dans = mysqlTable('sb_dans', {
   id: int('id').autoincrement().notNull().primaryKey(),
   name: varchar('name', { length: 128 }).notNull(),
-  description: text('description'),
+  description: text('description').notNull().default(''),
   creator: int('creator').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
   updater: int('updater').references(() => users.id, { onDelete: 'set null', onUpdate: 'cascade' }),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
