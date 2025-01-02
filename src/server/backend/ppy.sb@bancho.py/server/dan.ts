@@ -1,4 +1,4 @@
-import { aliasedTable, and, asc, desc, eq, getTableName, inArray, like, or, sql } from 'drizzle-orm'
+import { aliasedTable, and, asc, desc, eq, exists, getTableName, inArray, like, or, sql } from 'drizzle-orm'
 import { danSQLChunks } from '../utils/sql-dan'
 import { type Id, type ScoreId, hasRuleset } from '../'
 import { BanchoPyScoreStatus } from '../../bancho.py/enums'
@@ -153,6 +153,9 @@ export class DanProvider extends Base<Id, ScoreId> {
       const bmId = aliasedTable(schema.beatmaps, 'b_id')
       const bmMd5 = aliasedTable(schema.beatmaps, 'b_md5')
 
+      const condTreeModeCheck = this.#virtualTableDanTreeAlias('mode_check')
+      const condTreeRulesetCheck = this.#virtualTableDanTreeAlias('ruleset_check')
+
       const dansLateral = aliasedTable(schema.dans, 'd_l')
       const condTreeLateral = this.#virtualTableDanTreeSimpleAlias('full_tree')
       const danCondBindingLateral = aliasedTable(schema.requirementCondBindings, 'dc_l')
@@ -294,18 +297,32 @@ export class DanProvider extends Base<Id, ScoreId> {
               ?.if(a.keyword),
 
             // filter mode
-            and(
-              eq(searchCondTree.column.truthy, 1),
-              eq(searchCondTree.column.type, OP.ModeEq),
-              eq(searchCondTree.column.value, a.mode),
+            exists(
+              tx.select({ 1: sql`1` })
+                .from(condTreeModeCheck.aliasedTable)
+                .where(
+                  and(
+                    eq(condTreeModeCheck.column.root, danCondBinding.condId),
+                    eq(condTreeModeCheck.column.type, OP.ModeEq),
+                    eq(condTreeModeCheck.column.value, a.mode),
+                    eq(condTreeModeCheck.column.truthy, 1),
+                  ),
+                )
             )
               ?.if(a.mode),
 
             // filter ruleset
-            and(
-              eq(searchCondTree.column.truthy, 1),
-              eq(searchCondTree.column.type, OP.RulesetEq),
-              eq(searchCondTree.column.value, a.ruleset),
+            exists(
+              tx.select({ 1: sql`1` })
+                .from(condTreeRulesetCheck.aliasedTable)
+                .where(
+                  and(
+                    eq(condTreeRulesetCheck.column.root, danCondBinding.condId),
+                    eq(condTreeRulesetCheck.column.truthy, 1),
+                    eq(condTreeRulesetCheck.column.type, OP.RulesetEq),
+                    eq(condTreeRulesetCheck.column.value, a.ruleset),
+                  ),
+                )
             )
               ?.if(a.ruleset)
               ?.if(!((a.rulesetDefaultsToStandard && a.ruleset === Ruleset.Standard)))
@@ -326,7 +343,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         .groupBy(dans.id)
         .orderBy(
           desc(dans.updatedAt),
-          desc(dans.id)
+          desc(dans.id),
         )
         .limit(a.perPage)
         .offset(a.page * a.perPage)
@@ -337,7 +354,7 @@ export class DanProvider extends Base<Id, ScoreId> {
 
       try {
         return result.map((i) => {
-          const conds = this.#buildCondTreeMem(i.requirements.map(r => r.rootCond), i.fullTree)
+          const conds = this.#buildCondTreeMem(i.requirements.map(r => r.rootCond), i.fullTree.toSorted((a, b) => a.id - b.id))
           return {
             ...pick(i, ['id', 'name', 'createdAt', 'creator', 'description', 'updatedAt', 'updater']),
             requirements: i.requirements.map((req) => {
