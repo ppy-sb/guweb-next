@@ -88,7 +88,11 @@ function reset() {
 
 async function saveDB() {
   compose.value = {
-    ...await app.$client.dan.save.mutate(compose.value),
+    ...await app.$client.dan.save.mutate(compose.value, {
+      context: {
+        skipBatch: true,
+      },
+    }),
     _db: true,
   }
 }

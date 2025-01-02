@@ -564,6 +564,7 @@ export class DanProvider extends Base<Id, ScoreId> {
             valueStr = cond.val.toString()
             break
           case OP.ModeEq:
+          case OP.RulesetEq:
             valueStr = cond.val as string
             break
           case OP.BeatmapMd5Eq:
