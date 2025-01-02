@@ -4,10 +4,7 @@ import { $enum } from 'ts-enum-util'
 import { validateUsecase } from '~/common/utils/dan'
 import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
-
-definePageMeta({
-  middleware: ['auth'],
-})
+import { useSession } from '~/store/session'
 
 const $requirement = $enum(Requirement)
 
@@ -16,6 +13,8 @@ const requirements = [Requirement.Pass, Requirement.NoPause]
 const typeAC = [Requirement.Pass, Requirement.NoPause]
 const app = useNuxtApp()
 const route = useRoute()
+const session = useSession()
+const { t } = useI18n()
 
 const qId = route.query.id?.toString()
 
@@ -35,6 +34,8 @@ const loading = ref(false)
 watch(compose, () => {
   localStorage.setItem('dan-compose', JSON.stringify(compose.value))
 }, { deep: true })
+
+const fmtScore = createNumberFormatter()
 
 function loadLast() {
   const save = localStorage.getItem('dan-compose')
@@ -113,7 +114,19 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
   })
   return val
 }
+
+function confirm(msg: string) {
+  return window.confirm(msg)
+}
 </script>
+
+<i18n lang="yaml">
+en-GB:
+  delete-confirm: Are you sure? This action cannot be undone.
+
+zh-CN:
+  delete-confirm: 确定删除? 本操作无法撤销。
+</i18n>
 
 <template>
   <section class="container max-w-screen-lg mx-auto">
@@ -185,7 +198,7 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
       <button
         class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="loadLast"
       >
-        reopen last closed
+        recover last closed
       </button>
       <button
         class="col-span-12 sm:col-span-6 md:col-span-3 btn" @click="copy"
@@ -198,27 +211,33 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
         read from clipboard
       </button>
       <button
-        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-warning" @click="runDB"
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-info" :disabled="!compose._db" @click="duplicate"
       >
-        run in db
+        copy as new
+        <i v-if="loading" class="loading" />
+      </button>
+      <div class="hidden md:block md:col-span-9" />
+      <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-accent" @click="runDB"
+      >
+        dry run on all scores
+        <i v-if="loading" class="loading" />
+      </button>
+      <div class="hidden md:block md:col-span-3" />
+      <button
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-primary"
+        :disabled="!session.role.admin"
+        @click="saveDB"
+      >
+        save to db
         <i v-if="loading" class="loading" />
       </button>
       <button
-        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-success" @click="saveDB"
-      >
-        save
-        <i v-if="loading" class="loading" />
-      </button>
-      <button
-        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-error" :disabled="!compose._db" @click="deleteDB"
+        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-warning"
+        :disabled="!compose._db || !session.role.admin"
+        @click="confirm(t('delete-confirm')) && deleteDB()"
       >
         delete
-        <i v-if="loading" class="loading" />
-      </button>
-      <button
-        class="col-span-12 sm:col-span-6 md:col-span-3 btn btn-error" :disabled="!compose._db" @click="duplicate"
-      >
-        duplicate
         <i v-if="loading" class="loading" />
       </button>
     </div>
@@ -238,8 +257,14 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
             <th scope="col">
               Beatmap
             </th>
-            <th scope="col">
+            <th scope="col" class="text-right">
+              Score ID
+            </th>
+            <th scope="col" class="text-right">
               Score
+            </th>
+            <th scope="col" class="text-right">
+              Accuracy
             </th>
           </tr>
         </thead>
@@ -266,7 +291,7 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
                 {{ result.beatmap.artist }} - {{ result.beatmap.title }} [{{ result.beatmap.version }}]
               </a>
             </td>
-            <td>
+            <td class="font-mono text-right">
               <nuxt-link-locale
                 class="link text-sky-500"
                 :to="{
@@ -278,7 +303,12 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
               >
                 {{ result.score.id }}
               </nuxt-link-locale>
-              ({{ result.score.accuracy }}%, {{ result.score.score }})
+            </td>
+            <td class="font-mono text-right">
+              {{ fmtScore(result.score.score) }}
+            </td>
+            <td class="font-mono text-right">
+              {{ result.score.accuracy.toFixed(3) }}%
             </td>
           </tr>
         </tbody>
