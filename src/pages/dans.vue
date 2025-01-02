@@ -27,7 +27,7 @@ const query = ref({
   rulesetDefaultsToStandard: false,
 })
 
-const { data, refresh } = await app.$client.dan.search.useQuery(query)
+const { data, refresh, status } = await app.$client.dan.search.useQuery(query)
 
 const fmtScore = createNumberFormatter()
 
@@ -51,6 +51,15 @@ function getDanRequirementScores(dan: DatabaseDan<string>, requirement: Requirem
 }
 function getLoadingState(dan: DatabaseDan<string>) {
   return loadingStates.value.get(dan)
+}
+
+async function update() {
+  // check ruleset
+  if (query.value.mode && query.value.ruleset && !server.hasRuleset(query.value.mode, query.value.ruleset)) {
+    query.value.ruleset = undefined
+  }
+
+  await refresh()
 }
 </script>
 
@@ -83,14 +92,14 @@ zh-CN:
 </i18n>
 
 <template>
-  <section class="container px-2 mx-auto space-y-8 custom-container">
-    <form :action="useRequestURL().href" method="get" @submit.prevent="refresh()">
+  <section class="container px-2 mx-auto custom-container">
+    <form :action="useRequestURL().href" method="get" @submit.prevent="update()">
       <div class="grid grid-cols-4 pb-2 space-x-2 gap-y-2 md:grid-cols-4 lg:grid-cols-12">
         <div class="col-span-2 form-control">
           <div class="label">
             <span class="label-text">{{ t('mode') }}</span>
           </div>
-          <select id="" v-model="query.mode" name="mode" class="select select-bordered" @change="() => refresh()">
+          <select id="" v-model="query.mode" name="mode" class="select select-bordered" @change="() => update()">
             <option :value="undefined">
               {{ t('unset') }}
             </option>
@@ -103,7 +112,7 @@ zh-CN:
           <div class="label">
             <span class="label-text">{{ t('ruleset') }}</span>
           </div>
-          <select id="" v-model="query.ruleset" name="ruleset" class="select select-bordered" @change="() => refresh()">
+          <select id="" v-model="query.ruleset" name="ruleset" class="select select-bordered" @change="() => update()">
             <option :value="undefined">
               {{ t('unset') }}
             </option>
@@ -115,7 +124,7 @@ zh-CN:
         <div class="justify-end col-span-6 md:col-span-4 form-control">
           <label class="justify-start gap-2 cursor-pointer label">
             <span class="label-text">{{ t('treat-no-ruleset-cond-as-standard') }}</span>
-            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle" @change="() => refresh()">
+            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle" @change="() => update()">
           </label>
         </div>
       </div>
@@ -134,104 +143,119 @@ zh-CN:
       </div>
     </form>
 
-    <div v-for="item in data" :key="item.id" class="relative w-full border-l-4 border-primary ps-3">
-      <nuxt-link-locale class="text-3xl link" :to="{ name: 'dan-compose', query: { id: item.id } }">
-        {{ item.name }}
-      </nuxt-link-locale>
-      <p class="whitespace-pre-wrap">
-        {{ item.description }}
-      </p>
-      <div class="p-0 collapse collapse-plus">
-        <input type="checkbox">
-        <div class="text-xl font-medium collapse-title ps-0 link">
-          {{ t('detail') }}
-        </div>
-        <div class="p-0 m-0 space-y-4 overflow-auto leading-relaxed collapse-content">
-          <button class="btn" @click="lazyLoadScore(item)">
-            {{ t('load-qualified-scores') }}
-          </button>
-          <div v-for="requirement in item.requirements" :key="requirement.id" class="border-l-4 border-secondary ps-3">
-            <p class="mb-2">
-              <span>{{ t('achievement') }}</span>
-              <span class="font-bold">{{ $requirement.getKeyOrDefault(requirement.type, '?') }}</span>
-            </p>
-            <app-dan-explain-cond :cond="requirement.cond" />
-            <template v-if="getLoadingState(item) === State.Idle || getLoadingState(item) === State.Loading">
-              <p class="my-3">
-                <span class="text-sm font-bold">{{ t('qf-scores') }}</span>
+    <div class="space-y-8 relative pt-4">
+      <div
+        v-for="item in data" :key="item.id" class="relative w-full border-l-4 border-primary ps-3 transition-all"
+        :class="{
+          'blur opacity-30': status === 'pending',
+        }"
+      >
+        <nuxt-link-locale class="text-3xl link" :to="{ name: 'dan-compose', query: { id: item.id } }">
+          {{ item.name }}
+        </nuxt-link-locale>
+        <p class="whitespace-pre-wrap">
+          {{ item.description }}
+        </p>
+        <div class="p-0 collapse collapse-plus">
+          <input type="checkbox">
+          <div class="text-xl font-medium collapse-title ps-0 link">
+            {{ t('detail') }}
+          </div>
+          <div class="p-0 m-0 space-y-4 overflow-auto leading-relaxed collapse-content">
+            <button class="btn" @click="lazyLoadScore(item)">
+              {{ t('load-qualified-scores') }}
+            </button>
+            <div v-for="requirement in item.requirements" :key="requirement.id" class="border-l-4 border-secondary ps-3">
+              <p class="mb-2">
+                <span>{{ t('achievement') }}</span>
+                <span class="font-bold">{{ $requirement.getKeyOrDefault(requirement.type, '?') }}</span>
               </p>
-              <div class="relative overflow-x-auto border rounded-md border-base-300">
-                <table
-                  class="table transition-all table-sm table-zebra"
-                  :class="{
-                    'opacity-30 saturate-50 blur-md': getLoadingState(item) === State.Loading,
-                  }"
-                >
-                  <thead>
-                    <tr>
-                      <th scope="col">
-                        User
-                      </th>
-                      <th scope="col">
-                        Beatmap
-                      </th>
-                      <th scope="col">
-                        Score
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="result in getDanRequirementScores(item, requirement.type)" :key="result.score.id">
-                      <th scope="row" class="whitespace-nowrap">
-                        <nuxt-link-locale
-                          class="link text-sky-500"
-                          :to="{
-                            name: 'user-handle',
-                            params: {
-                              handle: result.player.id,
-                            },
-                          }"
-                        >
-                          {{ result.player.name }}
-                        </nuxt-link-locale>
-                      </th>
-                      <td class="whitespace-nowrap">
-                        <a
-                          :href="`/b/${result.beatmap.id}`"
-                          class="link text-sky-500"
-                        >
-                          {{ result.beatmap.artist }} - {{ result.beatmap.title }} [{{ result.beatmap.version }}]
-                        </a>
-                      </td>
-                      <td class="whitespace-nowrap">
-                        <nuxt-link-locale
-                          class="link text-sky-500"
-                          :to="{
-                            name: 'score-id',
-                            params: {
-                              id: result.score.id,
-                            },
-                          }"
-                        >
-                          id={{ result.score.id }}
-                          (acc={{ result.score.accuracy }}%, score={{ fmtScore(result.score.score) }})
-                        </nuxt-link-locale>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div
-                  class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur"
-                  :class="{
-                    'opacity-100 blur-none': getLoadingState(item) === State.Loading,
-                  }"
-                >
-                  <div class="m-auto loading" />
+              <app-dan-explain-cond :cond="requirement.cond" />
+              <template v-if="getLoadingState(item) === State.Idle || getLoadingState(item) === State.Loading">
+                <p class="my-3">
+                  <span class="text-sm font-bold">{{ t('qf-scores') }}</span>
+                </p>
+                <div class="relative overflow-x-auto border rounded-md border-base-300">
+                  <table
+                    class="table transition-all table-sm table-zebra"
+                    :class="{
+                      'opacity-30 saturate-50 blur-md': getLoadingState(item) === State.Loading,
+                    }"
+                  >
+                    <thead>
+                      <tr>
+                        <th scope="col">
+                          User
+                        </th>
+                        <th scope="col">
+                          Beatmap
+                        </th>
+                        <th scope="col">
+                          Score
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="result in getDanRequirementScores(item, requirement.type)" :key="result.score.id">
+                        <th scope="row" class="whitespace-nowrap">
+                          <nuxt-link-locale
+                            class="link text-sky-500"
+                            :to="{
+                              name: 'user-handle',
+                              params: {
+                                handle: result.player.id,
+                              },
+                            }"
+                          >
+                            {{ result.player.name }}
+                          </nuxt-link-locale>
+                        </th>
+                        <td class="whitespace-nowrap">
+                          <a
+                            :href="`/b/${result.beatmap.id}`"
+                            class="link text-sky-500"
+                          >
+                            {{ result.beatmap.artist }} - {{ result.beatmap.title }} [{{ result.beatmap.version }}]
+                          </a>
+                        </td>
+                        <td class="whitespace-nowrap">
+                          <nuxt-link-locale
+                            class="link text-sky-500"
+                            :to="{
+                              name: 'score-id',
+                              params: {
+                                id: result.score.id,
+                              },
+                            }"
+                          >
+                            id={{ result.score.id }}
+                            (acc={{ result.score.accuracy }}%, score={{ fmtScore(result.score.score) }})
+                          </nuxt-link-locale>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div
+                    class="absolute inset-0 flex transition-opacity opacity-0 pointer-events-none transition-filter blur"
+                    :class="{
+                      'opacity-100 blur-none': getLoadingState(item) === State.Loading,
+                    }"
+                  >
+                    <div class="m-auto loading" />
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
+            </div>
           </div>
         </div>
+      </div>
+      <div
+        class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 transition-opacity"
+        :class="{
+          'opacity-100': status === 'pending',
+        }"
+      >
+        <div class="loading" />
       </div>
     </div>
   </section>
