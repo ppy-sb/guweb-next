@@ -178,7 +178,7 @@ zh-CN:
         </button>
       </template>
       <template v-else-if="isConcreteCond(cond.type)">
-        <template v-if="[OP.ModeEq, OP.Extends].includes(cond.type)">
+        <template v-if="[OP.ModeEq, OP.RulesetEq, OP.Extends].includes(cond.type)">
           <div v-if="cond.type === OP.ModeEq" class="col-span-6 md:col-span-3 form-control">
             <select
               v-model="cond.val"
