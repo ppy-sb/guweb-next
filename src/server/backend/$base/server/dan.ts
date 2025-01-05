@@ -26,13 +26,14 @@ export namespace DanProvider {
   }
 
   export interface RequirementQualifiedScore<Id, ScoreId> {
-    requirement: Requirement
+    // requirement: Requirement
+    count: number
     scores: QualifiedScore<Id, ScoreId>[]
   }
 }
 export abstract class DanProvider<Id, ScoreId> extends Mixin(IdTransformable, ScoreIdTransformable) {
   abstract get(id: Id): Promise<DatabaseDan<Id>>
-  abstract getQualifiedScores(id: Id): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>[]>
+  abstract getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>>
   abstract delete(id: Id): Promise<void>
 
   abstract search(opt: { keyword: string; mode?: Mode; ruleset?: Ruleset; rulesetDefaultsToStandard?: boolean } & Pagination): Promise<Array<DatabaseDan<Id>>>

@@ -6,6 +6,7 @@ import {
   type Cond,
   OP,
   Requirement,
+  type RequirementCondBinding,
   type WrappedCond,
 } from '~/def/dan'
 import { modes, rulesets } from '~/def'
@@ -13,11 +14,16 @@ import { modes, rulesets } from '~/def'
 withDefaults(defineProps<{
   listMode?: boolean
   disabled?: boolean
+  requirements: readonly RequirementCondBinding<Requirement, Cond>[]
+  current: RequirementCondBinding<Requirement, Cond>
 }>(), { listMode: false, disabled: false })
 
 const emit = defineEmits<{
   (e: 'delete'): void
 }>()
+
+const tRequirement = localeKey.root.dan.requirement
+
 const cond = defineModel<Cond>()
 
 interface Translation {
@@ -80,10 +86,9 @@ const { t } = useI18n({
   } satisfies Record<string, Translation>,
 })
 
-const $requirement = $enum(Requirement)
 const drag = ref(false)
 
-const ops = $enum(OP).getValues()
+const ops = Object.values(OP)
 
 const concrete = [
   OP.AccGte,
@@ -223,8 +228,12 @@ zh-CN:
               <option disabled value="">
                 {{ t('select') }}
               </option>
-              <option v-for="ach in $requirement.getValues()" :key="ach" :value="ach">
-                {{ $requirement.getKeyOrDefault(ach, '?') }}
+              <option
+                v-for="ach in Object.values(Requirement).filter(ach => requirements.some(r => r.type === ach) && ach !== current.type)"
+                :key="ach"
+                :value="ach"
+              >
+                {{ t(tRequirement[ach].__path__) }}
               </option>
             </select>
           </div>
@@ -286,7 +295,13 @@ zh-CN:
           {{ t('reset') }} <icon name="lsicon:clear-filled" />
         </button>
         <div class="grid grid-cols-12 col-span-12 gap-2">
-          <app-dan-cond v-if="cond.type === OP.Remark || cond.type === OP.NOT" v-model="cond.cond" @delete="cond = undefined" />
+          <app-dan-cond
+            v-if="cond.type === OP.Remark || cond.type === OP.NOT"
+            v-model="cond.cond"
+            :requirements
+            :current
+            @delete="cond = undefined"
+          />
           <draggable
             v-else-if="cond.type === OP.AND || cond.type === OP.OR" v-model="cond.cond as unknown[]"
             class="grid grid-cols-12 col-span-12 space-y-2"
@@ -301,7 +316,13 @@ zh-CN:
             @end="drag = false"
           >
             <template #item="{ index }">
-              <app-dan-cond v-model="cond.cond[index]" :list-mode="true" @delete="(cond.cond as Cond[]).splice(index, 1)" />
+              <app-dan-cond
+                v-model="cond.cond[index]"
+                :list-mode="true"
+                :requirements
+                :current
+                @delete="(cond.cond as Cond[]).splice(index, 1)"
+              />
             </template>
             <template #footer>
               <button class="col-span-12 btn btn-sm btn-success btn-outline" @click="(cond.cond as any).push(undefined)">

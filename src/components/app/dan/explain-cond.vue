@@ -116,7 +116,7 @@ function isConcreteCond(op: OP): op is ConcreteCondOP | OP.Extends {
       v-else-if="cond.type === OP.AND || cond.type === OP.OR"
     >
       <div
-        class="border-l-4 inline-block my-1" :class="{
+        class="border-l-4 inline-block mt-1" :class="{
           'border-neutral ps-3': cond.type === OP.AND,
           'border-accent/30 bg-accent/5 rounded-r px-3 py-2': cond.type === OP.OR,
         }"
