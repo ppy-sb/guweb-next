@@ -1,10 +1,10 @@
-import { any, boolean, number, object, string } from 'zod'
+import { any, boolean, nativeEnum, number, object, string } from 'zod'
 import { type DanProvider as BaseDanProvider } from '../../backend/$base/server'
 import { staffProcedure } from '../middleware/role'
 import { router as _router, publicProcedure } from '../trpc'
 import { zodMode, zodRuleset } from '../shapes'
 import { validateUsecase } from '~/common/utils/dan'
-import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, type Requirement } from '~/def/dan'
+import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, Requirement } from '~/def/dan'
 import { Feature } from '~/def/features'
 import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
 
@@ -98,16 +98,22 @@ export const router = _router({
     }),
 
   getQualifiedScores: withFeatureFlag(publicProcedure, Feature.Dan)
-    .input(string()).query(async ({ input }) => {
-      const result = await dans.getQualifiedScores(DanProvider.stringToId(input))
-      return result.map(i => ({
-        ...i,
-        scores: i.scores.map(s => ({
+    .input(object({
+      id: string(),
+      requirement: nativeEnum(Requirement),
+      page: number().min(0).max(5).default(0),
+      perPage: number().min(1).max(10).default(10),
+    })).query(async ({ input }) => {
+      const result = await dans.getQualifiedScores(DanProvider.stringToId(input.id), input.requirement, input.page, input.perPage)
+
+      return ({
+        count: result.count,
+        scores: result.scores.map(s => ({
           ...s,
           score: mapId(s.score, ScoreProvider.scoreIdToString),
           player: mapId(s.player, DanProvider.idToString),
           beatmap: mapId(s.beatmap, DanProvider.idToString),
-        })),
-      })) satisfies BaseDanProvider.RequirementQualifiedScore<string, string>[] as BaseDanProvider.RequirementQualifiedScore<string, string>[]
+        })) as BaseDanProvider.QualifiedScore<string, string>[],
+      })
     }),
 })
