@@ -408,11 +408,47 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async getQualifiedScores(id: Id): Promise<Base.RequirementQualifiedScore<Id, ScoreId>[]> {
+  async getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<Base.RequirementQualifiedScore<Id, ScoreId>> {
     const dan = await this.get(id)
 
-    const res = await this.runCustomDan(dan)
-    return res
+    const req = dan.requirements.find(a => a.type === requirement)?.cond
+    if (!req) {
+      return { count: 0, scores: [] }
+    }
+
+    const _sql = this.#runCustomDanSql
+
+    const count
+    = await this.drizzle.$count(
+      this.drizzle.select({ count: sql`1` })
+        .from(this.tbl.scores)
+        .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+        .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
+        .orderBy(desc(this.tbl.scores.score))
+        .where(and(
+          eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
+          danSQLChunks(req, dan.requirements, this.tbl),
+        )).as('sq')
+    )
+
+    if (!count) {
+      return { count: 0, scores: [] }
+    }
+
+    const res = await _sql
+      .where(
+        and(
+          eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
+          danSQLChunks(req, dan.requirements, this.tbl),
+        )
+      )
+      .offset(perPage * page)
+      .limit(perPage)
+
+    return {
+      count,
+      scores: res,
+    }
   }
 
   readonly tbl = {
@@ -442,26 +478,30 @@ export class DanProvider extends Base<Id, ScoreId> {
   })
     .from(this.tbl.scores)
     .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
-    // .innerJoin(this.tbl.sources, and(
-    //   eq(this.tbl.beatmaps.server, this.tbl.sources.server),
-    //   eq(this.tbl.beatmaps.setId, this.tbl.sources.id),
-    // ))
     .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
     .orderBy(desc(this.tbl.scores.score))
-    .limit(10)
 
   async runCustomDan(opt: Dan): Promise<Array<Base.RequirementQualifiedScore<Id, ScoreId>>> {
     return await Promise.all(
       opt.requirements.map(
-        async a => ({
-          requirement: a.type,
-          scores: await this.#runCustomDanSql.where(
-            and(
-              eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
-              danSQLChunks(a.cond, opt.requirements, this.tbl),
+        async (a) => {
+          const _sql = this.#runCustomDanSql
+            .limit(10)
+            .where(
+              and(
+                eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
+                danSQLChunks(a.cond, opt.requirements, this.tbl),
+              )
             )
-          ).execute(),
-        })
+
+          const sql = await _sql.execute()
+          const count = await this.drizzle.$count(this.#runCustomDanSql)
+          return {
+            requirement: a.type,
+            count,
+            scores: sql,
+          }
+        }
       )
     )
   }

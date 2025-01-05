@@ -153,8 +153,8 @@ export default {
   },
   dan: {
     requirement: {
-      [Requirement.Pass]: 'Pass',
-      [Requirement.NoPause]: 'No Pause',
+      [Requirement.Pass]: '通过',
+      [Requirement.NoPause]: '无暂停',
     },
     cond: {
       [OP.AccGte]: '准确度 ≥ {val}',

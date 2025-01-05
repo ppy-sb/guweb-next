@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { inferRouterOutputs } from '@trpc/server'
-import { $enum } from 'ts-enum-util'
 import { validateUsecase } from '~/common/utils/dan'
 import { type DatabaseDan, Requirement, type RequirementCondBinding } from '~/def/dan'
 import type { AppRouter } from '~/server/trpc/routers'
 import { useSession } from '~/store/session'
 
-const $requirement = $enum(Requirement)
+const tRequirement = localeKey.root.dan.requirement
 
 type RouterOutput = inferRouterOutputs<AppRouter>
 const requirements = [Requirement.Pass, Requirement.NoPause]
@@ -164,7 +163,7 @@ zh-CN:
               :selected="ac === ach.type"
               :disabled="!!compose.requirements.find(i => i.type === ac)"
             >
-              {{ $requirement.getKeyOrDefault(ac) }}
+              {{ t(tRequirement[ac].__path__) }}
             </option>
           </select>
         </div>
@@ -173,6 +172,8 @@ zh-CN:
           <app-dan-cond
             v-model="ach.cond"
             :list-mode="true"
+            :requirements="compose.requirements"
+            :current="ach"
             @delete="(compose.requirements as any[]).splice(i, 1)"
           />
         </div>
@@ -246,9 +247,6 @@ zh-CN:
         v-for="ach, i in data" :key="i"
         class="table table-zebra caption-top"
       >
-        <caption class="py-2 bg-base-200">
-          {{ $requirement.getKeyOrDefault(ach.requirement) }}
-        </caption>
         <thead>
           <tr>
             <th scope="col">
