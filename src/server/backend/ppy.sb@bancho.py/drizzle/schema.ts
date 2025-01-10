@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm'
-import { bigint, date, datetime, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, tinyint, varchar } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, date, datetime, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, tinyint, varchar } from 'drizzle-orm/mysql-core'
 import { clans, users } from '../../bancho.py/drizzle/schema'
 
 export {
@@ -61,8 +61,9 @@ export const scoresForeign = mysqlTable('scores_foreign', {
 })
 export const scoresSuspicion = mysqlTable('scores_suspicion', {
   scoreId: bigint('score_id', { mode: 'number' }).autoincrement().notNull(),
-  suspicionReason: varchar('suspicion_reason', { length: 128 }).notNull(),
-  ignored: tinyint('ignored').notNull(),
+  kind: mysqlEnum('kind', ['hash', 'replay', 'report', 'ppcap']).default('replay'),
+  reason: varchar('reason', { length: 128 }).notNull(),
+  isChecked: boolean('is_checked').notNull(),
   detail: json('detail').notNull(),
   suspicionTime: datetime('suspicion_time', { mode: 'string' }).notNull(),
 },
