@@ -1,5 +1,5 @@
 import { parseDsnOrThrow } from '@httpx/dsn-parser'
-import MySQLEvents, { type RowEvent } from '@rodrigogs/mysql-events'
+import MySQLEvents, { type DeleteEvent, type InsertEvent, type RowEvent, type UpdateEvent } from '@rodrigogs/mysql-events'
 import { type InferSelectModel, type Table, getTableColumns, getTableName } from 'drizzle-orm'
 import gucchoBackendConfig from '~~/guccho.backend.config'
 
@@ -28,7 +28,16 @@ await instance.start()
 instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error)
 instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error)
 
-export function watchTable<T extends Table>(table: T, statement: keyof typeof MySQLEvents.STATEMENTS, cb: (event: RowEvent<InferSelectModel<T>>) => void) {
+type RowEventType<T extends Table, E extends keyof typeof MySQLEvents.STATEMENTS> =
+E extends typeof MySQLEvents.STATEMENTS.INSERT
+  ? InsertEvent<InferSelectModel<T>>
+  : E extends typeof MySQLEvents.STATEMENTS.UPDATE
+    ? UpdateEvent<InferSelectModel<T>>
+    : E extends typeof MySQLEvents.STATEMENTS.DELETE
+      ? DeleteEvent<InferSelectModel<T>>
+      : RowEvent<InferSelectModel<T>>
+
+export function watchTable<T extends Table, E extends keyof typeof MySQLEvents.STATEMENTS>(table: T, statement: E, cb: (event: RowEventType<T, E>) => void) {
   const head = parsed.db ? `${parsed.db}.` : ''
   const tableName = head + getTableName(table)
 
@@ -36,7 +45,6 @@ export function watchTable<T extends Table>(table: T, statement: keyof typeof My
     name: generateTriggerName(tableName, statement),
     expression: `${tableName}.*`,
     statement,
-
   }
 
   instance.addTrigger(Object.assign(ctx, {
@@ -60,7 +68,7 @@ export function watchTable<T extends Table>(table: T, statement: keyof typeof My
         }
         evt.affectedRows.push(newRow as any)
       }
-      cb(evt)
+      cb(evt as RowEventType<T, E>)
     },
   }))
 
