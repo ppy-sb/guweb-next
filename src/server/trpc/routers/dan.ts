@@ -9,24 +9,6 @@ import { Feature } from '~/def/features'
 import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
 
 export const router = _router({
-  get: withFeatureFlag(publicProcedure, Feature.Dan)
-    .input(string())
-    .query(async ({ input }) => {
-      const res = await dans.get(DanProvider.stringToId(input))
-      return {
-        ...res,
-        id: DanProvider.idToString(res.id),
-        requirements: res.requirements.map(i => ({
-          ...i,
-          id: DanProvider.idToString(i.id),
-        })),
-      }
-    }),
-
-  delete: withFeatureFlag(staffProcedure, Feature.Dan)
-    .input(string())
-    .mutation(async ({ input }) => await dans.delete(DanProvider.stringToId(input))),
-
   search: publicProcedure
     .input(object({
       keyword: string(),
@@ -47,6 +29,24 @@ export const router = _router({
         })) satisfies DatabaseRequirementCondBinding<string, Requirement, Cond>[],
       })) satisfies DatabaseDan<string>[]
     }),
+
+  get: withFeatureFlag(publicProcedure, Feature.Dan)
+    .input(string())
+    .query(async ({ input }) => {
+      const res = await dans.get(DanProvider.stringToId(input))
+      return {
+        ...res,
+        id: DanProvider.idToString(res.id),
+        requirements: res.requirements.map(i => ({
+          ...i,
+          id: DanProvider.idToString(i.id),
+        })),
+      }
+    }),
+
+  delete: withFeatureFlag(staffProcedure, Feature.Dan)
+    .input(string())
+    .mutation(async ({ input }) => await dans.delete(DanProvider.stringToId(input))),
 
   save: withFeatureFlag(staffProcedure, Feature.Dan)
     .input(
@@ -115,5 +115,34 @@ export const router = _router({
           beatmap: mapId(s.beatmap, DanProvider.idToString),
         })) as BaseDanProvider.QualifiedScore<string, string>[],
       })
+    }),
+
+  userClearedScores: withFeatureFlag(publicProcedure, Feature.Dan)
+    .input(object({
+      id: string(),
+      page: number().min(0).max(5).default(0),
+      perPage: number().min(1).max(10).default(10),
+    })).query(async ({ input }) => {
+      const data = await dans.getUserClearedDans({
+        user: { id: DanProvider.stringToId(input.id) },
+        page: input.page,
+        perPgae: input.perPage,
+      })
+
+      return data.map((item) => {
+        return {
+          ...item,
+          dan: mapId(item.dan, DanProvider.idToString),
+          score: {
+            ...item.score,
+            id: ScoreProvider.scoreIdToString(item.score.id),
+            beatmap: {
+              ...item.score.beatmap,
+              id: DanProvider.idToString(item.score.beatmap.id),
+              beatmapset: mapId(item.score.beatmap.beatmapset, DanProvider.idToString),
+            },
+          },
+        }
+      }) satisfies BaseDanProvider.UserDanClearedScore<string, string>[]
     }),
 })

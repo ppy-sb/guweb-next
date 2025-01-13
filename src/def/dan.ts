@@ -140,7 +140,7 @@ export type DatabaseRequirementResult<I, RCBinding extends DatabaseRequirementCo
 export type ValidatingScore = ScoreCompact<any, Mode> & {
   beatmap: BeatmapCompact<any, any>
   nonstop: boolean
-  player: UserCompact<any>
+  player: Pick<UserCompact<any>, 'id' | 'name' | 'safeName'>
   mode: Mode
   ruleset: Ruleset
 }

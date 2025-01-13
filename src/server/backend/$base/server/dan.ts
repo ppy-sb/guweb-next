@@ -4,6 +4,8 @@ import { type Dan, type DatabaseDan, type Requirement } from '~/def/dan'
 import { type Pagination } from '~/def/pagination'
 import { type UserCompact } from '~/def/user'
 import type { Mode, Ruleset } from '~/def'
+import { type ScoreCompact } from '~/def/score'
+import { type BaseBeatmapset, type BeatmapCompact, Beatmapset } from '~/def/beatmap'
 
 export namespace DanProvider {
   export interface QualifiedScore<Id, ScoreId> {
@@ -30,15 +32,25 @@ export namespace DanProvider {
     count: number
     scores: QualifiedScore<Id, ScoreId>[]
   }
+
+  export interface UserDanClearedScore<Id, ScoreId> {
+    score: Pick<ScoreCompact<ScoreId, Mode>, 'id' | 'score' | 'accuracy' | 'maxCombo' | 'grade' | 'mods' | 'playedAt' > & {
+      mode: Mode
+      ruleset: Ruleset
+      beatmap: Pick<BeatmapCompact<Id, Id>, 'id' | 'creator' | 'mode' | 'version' | 'md5'> & {
+        beatmapset: BaseBeatmapset<Id>
+      }
+    }
+    dan: Pick<DatabaseDan<Id>, 'id' | 'name'>
+    requirements: Requirement[]
+  }
 }
 export abstract class DanProvider<Id, ScoreId> extends Mixin(IdTransformable, ScoreIdTransformable) {
-  abstract get(id: Id): Promise<DatabaseDan<Id>>
-  abstract getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>>
-  abstract delete(id: Id): Promise<void>
-
   abstract search(opt: { keyword: string; mode?: Mode; ruleset?: Ruleset; rulesetDefaultsToStandard?: boolean } & Pagination): Promise<Array<DatabaseDan<Id>>>
-
+  abstract get(id: Id): Promise<DatabaseDan<Id>>
+  abstract delete(id: Id): Promise<void>
+  abstract getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>>
   abstract runCustomDan(opt: Dan): Promise<Array<DanProvider.RequirementQualifiedScore<Id, ScoreId>>>
-
-  abstract saveComposed(i: Dan | DatabaseDan<Id>, user: UserCompact<Id>): Promise<DatabaseDan<Id>>
+  abstract saveComposed(i: Dan | DatabaseDan<Id>, user: Pick<UserCompact<Id>, 'id'>): Promise<DatabaseDan<Id>>
+  abstract getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPgae: number }): Promise<Array<DanProvider.UserDanClearedScore<Id, ScoreId>>>
 }
