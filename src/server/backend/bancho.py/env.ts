@@ -28,6 +28,7 @@ export const apiEndpoint = object({
 
 export const validator = base.and(object({
   dsn,
+  replica: dsn,
   avatar,
   api: apiEndpoint,
 }).and(rank))
