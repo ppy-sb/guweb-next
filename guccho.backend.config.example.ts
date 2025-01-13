@@ -56,4 +56,9 @@ export default {
     sender: 'pe@ppy.sb',
   },
 
+  dan: {
+    processor: 'interval',
+    interval: 60 * 1000,
+  },
+
 } satisfies UserBackendConfig

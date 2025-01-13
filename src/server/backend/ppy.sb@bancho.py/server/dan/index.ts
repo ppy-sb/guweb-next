@@ -1,23 +1,32 @@
-import { aliasedTable, and, asc, desc, eq, exists, getTableName, inArray, like, or, sql } from 'drizzle-orm'
-import { danSQLChunks } from '../utils/sql-dan'
-import { type Id, type ScoreId, hasRuleset } from '../'
-import { BanchoPyScoreStatus } from '../../bancho.py/enums'
-import { useDrizzle } from '../../bancho.py/server/source/drizzle'
+import { type InferInsertModel, aliasedTable, and, asc, count, desc, eq, exists, getTableName, inArray, like, or, sql } from 'drizzle-orm'
+import { danSQLChunks } from '../../utils/sql-dan'
+import { type Id, type ScoreId, hasRuleset } from '../..'
+import { BanchoPyScoreStatus } from '../../../bancho.py/enums'
+import { useDrizzle } from '../../../bancho.py/server/source/drizzle'
 import {
+  fromBanchoMode,
   fromBanchoPyMode,
   idToString,
   scoreIdToString,
   stringToId,
   stringToScoreId,
+  toBeatmapset,
+  toMods,
   toScore,
-} from '../../bancho.py/transforms'
-import * as schema from '../drizzle/schema'
+} from '../../../bancho.py/transforms'
+import * as schema from '../../drizzle/schema'
+import { RealtimeDanProcessor } from './processor/realtime'
+import { IntervalDanProcessor } from './processor/interval'
+import { NoopDanProcessor } from './processor/noop'
+import { type BaseDanProcessor } from './processor/$base'
 import { type UserCompact } from '~/def/user'
 import { GucchoError } from '~/def/messages'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, OP, Requirement } from '~/def/dan'
 import { DanProvider as Base } from '$base/server'
 import { validateCond } from '~/common/utils/dan'
 import { Mode, Ruleset } from '~/def'
+import { config } from '$active/env'
+import { type Grade } from '~/def/score'
 
 export class DanProvider extends Base<Id, ScoreId> {
   static readonly idToString = idToString
@@ -25,6 +34,18 @@ export class DanProvider extends Base<Id, ScoreId> {
 
   static readonly stringToScoreId = stringToScoreId
   static readonly scoreIdToString = scoreIdToString
+  config = config()
+
+  processor: BaseDanProcessor = this.config.dan
+    ? this.config.dan.processor === 'realtime'
+      ? new RealtimeDanProcessor(this)
+      : new IntervalDanProcessor(this as DanProvider & { config: { dan: { interval: number } } })
+    : new NoopDanProcessor(this)
+
+  constructor() {
+    super()
+    this.processor.init()
+  }
 
   drizzle = useDrizzle(schema)
   async get(
@@ -39,6 +60,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       with: {
         requirements: {
           columns: {
+            id: true,
             condId: true,
             type: true,
           },
@@ -50,10 +72,10 @@ export class DanProvider extends Base<Id, ScoreId> {
       throwGucchoError(GucchoError.DanNotFound)
     }
 
-    return await this.#getDanWithRequirements(dan, tx)
+    return await this.getDanWithRequirements(dan, tx)
   }
 
-  async #getDanWithRequirements(dan: {
+  async getDanWithRequirements(dan: {
     id: number
     name: string
     creator: number | null
@@ -62,6 +84,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     updater: number | null
     updatedAt: Date
     requirements: {
+      id: number
       type: 'pass' | 'no-pause'
       condId: number
     }[]
@@ -80,7 +103,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       }
       return {
         ...req,
-        id: req.condId,
+        id: req.id,
         type: req.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
         cond,
       }
@@ -157,7 +180,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       const condTreeRulesetCheck = this.#virtualTableDanTreeAlias('ruleset_check')
 
       const dansLateral = aliasedTable(schema.dans, 'd_l')
-      const condTreeLateral = this.#virtualTableDanTreeSimpleAlias('full_tree')
+      const condTreeLateral = this.virtualTableDanTreeSimpleAlias('full_tree')
       const danCondBindingLateral = aliasedTable(schema.requirementCondBindings, 'dc_l')
       const bmIdLateral = aliasedTable(schema.beatmaps, 'b_id_l')
       const bmMd5Lateral = aliasedTable(schema.beatmaps, 'b_md5_l')
@@ -388,7 +411,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       eq(schema.beatmaps.server, schema.sources.server)
     ))
     .innerJoin(schema.requirementClearedScores, eq(schema.scores.id, schema.requirementClearedScores.scoreId))
-    .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.requirement, schema.requirementCondBindings.id))
+    .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.bindId, schema.requirementCondBindings.id))
     .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
   // .innerJoin(schema.danConds, eq(schema.requirementCondBindings.condId, schema.danConds.id))
     .where(({ dan }) => eq(dan.id, sql.placeholder('danId')))
@@ -408,6 +431,92 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
+  async getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage?: number }): Promise<Array<Base.UserDanClearedScore<Id, ScoreId>>> {
+    // derived tables
+    const s1 = aliasedTable(schema.scores, 's1')
+
+    const sq = this.drizzle.select({
+      ...pick(s1, ['id', 'mode', 'accuracy', 'score', 'pp', 'maxCombo', 'grade', 'mapMd5', 'userId', 'mods', 'playTime']) as Pick<typeof s1, 'id' | 'mode' | 'accuracy' | 'score' | 'pp' | 'maxCombo' | 'grade' | 'mapMd5' | 'userId' | 'mods' | 'playTime'>,
+      rn: sql`rank() over (partition by ${s1.mode}, ${s1.mapMd5}, ${s1.userId} order by ${s1.score} desc)`.as('rn'),
+    })
+      .from(s1)
+      .as('sq')
+
+    const res = await this.drizzle.select({
+      dan: {
+        id: schema.dans.id,
+        name: schema.dans.name,
+      },
+      requirements: sql<Requirement[]>`JSON_ARRAYAGG(${schema.requirementCondBindings.type})`.as('requirements'),
+      score: {
+        id: sq.id,
+        mode: sq.mode,
+        accuracy: sq.accuracy,
+        score: sq.score,
+        pp: sq.pp,
+        maxCombo: sq.maxCombo,
+        grade: sq.grade,
+        mods: sq.mods,
+        playedAt: sq.playTime,
+      },
+      beatmap: {
+        mode: schema.beatmaps.mode,
+        id: schema.beatmaps.id,
+        md5: schema.beatmaps.md5,
+        creator: schema.beatmaps.creator,
+        version: schema.beatmaps.version,
+        diff: schema.beatmaps.diff,
+        lastUpdate: schema.beatmaps.lastUpdate,
+      },
+
+      beatmapset: {
+        id: schema.beatmaps.setId,
+        artist: schema.beatmaps.artist,
+        title: schema.beatmaps.title,
+        source: schema.beatmaps.server,
+      },
+
+    })
+      .from(schema.requirementClearedScores)
+      .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.bindId, schema.requirementCondBindings.id))
+      .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
+      .innerJoin(sq, eq(schema.requirementClearedScores.scoreId, sq.id))
+      .innerJoin(schema.beatmaps, eq(sq.mapMd5, schema.beatmaps.md5))
+      .groupBy(schema.dans.id, sq.id)
+      .orderBy(
+        desc(schema.beatmaps.diff),
+        desc(count(schema.requirementCondBindings.type)),
+      )
+      .where(and(
+        eq(sq.userId, opt.user.id),
+        eq(sq.rn, 1),
+      ))
+
+    return res.map((i) => {
+      const [mode, ruleset] = fromBanchoPyMode(i.score.mode)
+      return {
+        dan: i.dan,
+        requirements: i.requirements,
+        score: {
+          ...i.score,
+          mods: toMods(i.score.mods),
+          mode,
+          ruleset,
+          score: BigInt(i.score.score),
+          beatmap: {
+            ...i.beatmap,
+            mode: fromBanchoMode(i.beatmap.mode),
+            beatmapset: toBeatmapset({
+              id: i.beatmapset.id,
+              server: 'osu!',
+            }, i.beatmapset),
+          },
+          grade: (i.score.grade === 'N' ? 'F' : i.score.grade) as Grade,
+        },
+      } satisfies Base.UserDanClearedScore<Id, ScoreId>
+    })
+  }
+
   async getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<Base.RequirementQualifiedScore<Id, ScoreId>> {
     const dan = await this.get(id)
 
@@ -416,7 +525,8 @@ export class DanProvider extends Base<Id, ScoreId> {
       return { count: 0, scores: [] }
     }
 
-    const _sql = this.#runCustomDanSql
+    const _sql = this.runCustomDanSql(this.drizzle)
+      .orderBy(desc(this.tbl.scores.score))
 
     const count
     = await this.drizzle.$count(
@@ -458,7 +568,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     sources: schema.sources,
   }
 
-  readonly #runCustomDanSql = this.drizzle.select({
+  readonly runCustomDanSql = (tx: Omit<typeof this.drizzle, '$client'>) => tx.select({
     player: {
       id: this.tbl.users.id,
       name: this.tbl.users.name,
@@ -479,13 +589,13 @@ export class DanProvider extends Base<Id, ScoreId> {
     .from(this.tbl.scores)
     .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
     .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
-    .orderBy(desc(this.tbl.scores.score))
 
   async runCustomDan(opt: Dan): Promise<Array<Base.RequirementQualifiedScore<Id, ScoreId>>> {
     return await Promise.all(
       opt.requirements.map(
         async (a) => {
-          const _sql = this.#runCustomDanSql
+          const _sql = this.runCustomDanSql(this.drizzle)
+            .orderBy(desc(this.tbl.scores.score))
             .limit(10)
             .where(
               and(
@@ -495,7 +605,7 @@ export class DanProvider extends Base<Id, ScoreId> {
             )
 
           const sql = await _sql.execute()
-          const count = await this.drizzle.$count(this.#runCustomDanSql)
+          const count = await this.drizzle.$count(this.runCustomDanSql(this.drizzle))
           return {
             requirement: a.type,
             count,
@@ -508,7 +618,7 @@ export class DanProvider extends Base<Id, ScoreId> {
 
   async saveComposed(
     i: Dan | DatabaseDan<Id>,
-    u: UserCompact<Id>
+    u: Pick<UserCompact<Id>, 'id'>
   ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
     return await this.drizzle.transaction(async (tx) => {
     // 1. Insert or update the dan record
@@ -542,16 +652,12 @@ export class DanProvider extends Base<Id, ScoreId> {
 
       const oldCondIds = existingBindings.map(binding => binding.condId)
 
-      // Delete existing requirement bindings
-      await tx
-        .delete(schema.requirementCondBindings)
-        .where(eq(schema.requirementCondBindings.danId, id))
-
       // Delete old conditions recursively
       for (const oldCondId of oldCondIds) {
         await this.deleteCondNodeWithChildren(oldCondId, tx)
       }
 
+      const types: InferInsertModel<typeof schema.requirementCondBindings>[] = []
       // 3. Save new conditions and their tree structures
       for (const r of i.requirements) {
       // Validate the condition
@@ -564,15 +670,23 @@ export class DanProvider extends Base<Id, ScoreId> {
           throw new Error(`Failed to save cond: ${JSON.stringify(r.cond)}`)
         }
 
-        // 4. Link the root condition to the dan via requirement_cond_bindings
-        await tx
-          .insert(schema.requirementCondBindings)
-          .values({
-            danId: id,
-            condId: rootCondId,
-            type: r.type,
-          })
+        types.push({
+          danId: id,
+          condId: rootCondId,
+          type: r.type,
+        })
       }
+
+      // 4. Link the root condition to the dan via requirement_cond_bindings
+      await tx
+        .insert(schema.requirementCondBindings)
+        .values(types)
+        // requires uniqueIndex(danId, type)
+        .onDuplicateKeyUpdate({
+          set: {
+            condId: sql`values(${schema.requirementCondBindings.condId})`,
+          },
+        })
 
       // 5. Return the updated dan object
       return await this.get(id, tx)
@@ -841,7 +955,7 @@ FROM
   }
 
   // TODO deprecate after drizzle supports withRecursive
-  #virtualTableDanTreeSimpleAlias<T extends string>(name: T) {
+  virtualTableDanTreeSimpleAlias<T extends string>(name: T) {
     return {
       column: {
         id: sql.raw(`${name}.id`).mapWith(Number),

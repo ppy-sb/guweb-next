@@ -37,7 +37,7 @@ export function pretty_result(
     `beatmap: Beatmap(creator=${score.beatmap.creator}, version=${score.beatmap.version}, mode=${score.beatmap.mode}, md5=${score.beatmap.md5})`
   )
 
-  return msg.concat(...res.map(res => fmtDetail(res, 1).flat()))
+  return msg.concat(...res.map(res => fmtDanResult(res, 1).flat()))
 }
 
 function sp(n: number) {
@@ -47,7 +47,7 @@ function b(_b: boolean) {
   return _b ? '✓' : '✗'
 }
 
-function fmtDetail(
+export function fmtDanResult(
   detail: RequirementResult | DetailResult<Cond>,
   indent: number = 0
 ) {
@@ -69,10 +69,10 @@ function fmtDetail(
 
   if ('detail' in detail) {
     if (Array.isArray(detail.detail)) {
-      msg = msg.concat(...detail.detail.map(d => fmtDetail(d, indent + 1)))
+      msg = msg.concat(...detail.detail.map(d => fmtDanResult(d, indent + 1)))
     }
     else if (typeof detail.detail === 'object') {
-      msg = msg.concat(fmtDetail(detail.detail as DetailResult<Cond>, indent + 1))
+      msg = msg.concat(fmtDanResult(detail.detail as DetailResult<Cond>, indent + 1))
     }
   }
 
