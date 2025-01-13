@@ -5,7 +5,7 @@ import gucchoBackendConfig from '~~/guccho.backend.config'
 
 // import * as mysql from '@vlasky/mysql'
 
-const parsed = parseDsnOrThrow(gucchoBackendConfig.dsn)
+const parsed = parseDsnOrThrow(gucchoBackendConfig.replica)
 
 // const dsn = {
 //   host: parsed.host,
@@ -16,7 +16,7 @@ const parsed = parseDsnOrThrow(gucchoBackendConfig.dsn)
 
 // const connection = mysql.createConnection(dsn)
 
-export const instance = new MySQLEvents(gucchoBackendConfig.dsn, {
+export const instance = new MySQLEvents(gucchoBackendConfig.replica, {
   startAtEnd: true,
   excludedSchemas: {
     mysql: true,
