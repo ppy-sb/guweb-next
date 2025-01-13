@@ -1,6 +1,6 @@
 // keep relative imports for drizzle-kit
 import { relations } from 'drizzle-orm'
-import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, unique, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
 import { clans, scores, users } from '../../bancho.py/drizzle/schema'
 import { OP, Requirement } from '../../../../def/dan'
 import { type ObjValueTuple } from '../../../../def/good-to-have'
@@ -101,22 +101,26 @@ export const requirementCondBindings = mysqlTable('sb_requirement_cond_bindings'
   type: mysqlEnum('requirement', Object.values(Requirement) as RequirementTuple).notNull(),
   danId: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
   condId: int('cond').notNull().references(() => danConds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-})
+}, table => [
+  uniqueIndex('dan_id_type').on(table.danId, table.type),
+])
 
 export const requirementClearedScores = mysqlTable('sb_requirement_cleared_scores', {
-  scoreId: bigint('score_id', { mode: 'bigint', unsigned: true })
-    .notNull()
-    .references(() => scores.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
-  requirement: int('requirement').notNull(),
-}, tbl => ({
-  requirement_cleared_binding: foreignKey({
-    columns: [tbl.requirement],
+  scoreId: bigint('score_id', { mode: 'bigint', unsigned: true }).notNull(),
+  bindId: int('requirement').notNull(),
+}, tbl => [
+  foreignKey({
+    columns: [tbl.bindId],
     foreignColumns: [requirementCondBindings.id],
-    name: 'requirement_cleared_binding',
-  })
-    .onDelete('cascade')
-    .onUpdate('cascade'),
-}))
+    name: 'requirement_cleared_requirement',
+  }),
+  foreignKey({
+    columns: [tbl.scoreId],
+    foreignColumns: [scores.id],
+    name: 'requirement_cleared_score_id',
+  }),
+  primaryKey({ columns: [tbl.scoreId, tbl.bindId], name: 'key0' }),
+])
 
 export const userpagesRelations = relations(userpages, ({ one }) => ({
   user: one(users, { fields: [userpages.userId], references: [users.id] }),
@@ -142,5 +146,5 @@ export const requirementCondBindingRelations = relations(requirementCondBindings
 
 export const requirementClearedScoreRelations = relations(requirementClearedScores, ({ one }) => ({
   score: one(scores, { fields: [requirementClearedScores.scoreId], references: [scores.id] }),
-  requirement: one(requirementCondBindings, { fields: [requirementClearedScores.requirement], references: [requirementCondBindings.id] }),
+  requirement: one(requirementCondBindings, { fields: [requirementClearedScores.bindId], references: [requirementCondBindings.id] }),
 }))

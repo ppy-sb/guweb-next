@@ -8,7 +8,8 @@ import { type BaseBeatmapCompact, type BaseBeatmapset, BeatmapSource, type Beatm
 import { StableMod } from '~/def/score'
 
 function createBanchoAssets(beatmapset: { id: unknown }) {
-  const v = Math.floor(new Date().getTime() / 1000)
+  // const v = Math.floor(new Date().getTime() / 1000)
+  const v = 1
 
   return {
     'cover': `https://assets.ppy.sh/beatmaps/${beatmapset.id}/covers/cover.jpg?${v}`,
