@@ -23,7 +23,8 @@ export enum OP {
   NoPause = 'no-pause',
   AccGte = 'acc-gte',
   ScoreGte = 'score-gte',
-  WithStableMod = 'stable/with-mod',
+  StableModIncludeAny = 'stable/with-mod',
+  StableModIncludeAll = 'stable/with-all-mod',
 }
 
 export interface CondBase<O> {
@@ -47,7 +48,8 @@ export type UConcreteCond =
   | ConcreteCond<OP.BeatmapMd5Eq, string>
   | ConcreteCond<OP.AccGte, number>
   | ConcreteCond<OP.ScoreGte, number>
-  | ConcreteCond<OP.WithStableMod, StableMod>
+  | ConcreteCond<OP.StableModIncludeAny, StableMod>
+  | ConcreteCond<OP.StableModIncludeAll, StableMod>
   | ConcreteCond<OP.ModeEq, Mode>
   | ConcreteCond<OP.RulesetEq, Ruleset>
   | CondBase<OP.NoPause>

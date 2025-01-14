@@ -1,5 +1,5 @@
 import type { GlobalI18n } from '../@types'
-import { OP, Requirement } from '../../def/dan'
+import { Requirement } from '../../def/dan'
 import { CountryCode } from '~/def/country-code'
 import { Scope, UserRole } from '~/def/user'
 import { Mail } from '~/def/mail'
@@ -161,21 +161,6 @@ export default {
     requirement: {
       [Requirement.Pass]: 'Pass',
       [Requirement.NoPause]: 'No Pause',
-    },
-    cond: {
-      [OP.AccGte]: 'Accuracy ≥ {val}',
-      [OP.ScoreGte]: 'Score ≥ {val}',
-      [OP.ModeEq]: 'Mode = {val}',
-      [OP.RulesetEq]: 'Rule = {val}',
-      [OP.BanchoBeatmapIdEq]: 'Beatmap ID = {val} on Bancho',
-      [OP.BeatmapMd5Eq]: 'Beatmap MD5 = {val}',
-      [OP.WithStableMod]: 'Played With {val}',
-      [OP.Extends]: 'meet all requirements in {val}',
-      [OP.OR]: 'or',
-      [OP.AND]: 'AND',
-      [OP.NOT]: 'Not',
-      [OP.Remark]: 'Remark: {remark} {val}',
-      [OP.NoPause]: 'No Pause',
     },
   },
   country: {
