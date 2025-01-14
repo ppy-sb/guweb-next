@@ -34,14 +34,7 @@ export const router = _router({
     .input(string())
     .query(async ({ input }) => {
       const res = await dans.get(DanProvider.stringToId(input))
-      return {
-        ...res,
-        id: DanProvider.idToString(res.id),
-        requirements: res.requirements.map(i => ({
-          ...i,
-          id: DanProvider.idToString(i.id),
-        })),
-      }
+      return transformDan(res)
     }),
 
   delete: withFeatureFlag(staffProcedure, Feature.Dan)
@@ -145,4 +138,20 @@ export const router = _router({
         }
       }) satisfies BaseDanProvider.UserDanClearedScore<string, string>[]
     }),
+
+  exportAll: withFeatureFlag(staffProcedure, Feature.Dan)
+    .query(async () => {
+      return (await dans.exportAll()).map(transformDan)
+    }),
 })
+
+function transformDan(res: DatabaseDan<any>): DatabaseDan<string> {
+  return {
+    ...res,
+    id: DanProvider.idToString(res.id),
+    requirements: res.requirements.map(i => ({
+      ...i,
+      id: DanProvider.idToString(i.id),
+    })),
+  }
+}
