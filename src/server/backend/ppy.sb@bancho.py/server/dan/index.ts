@@ -60,7 +60,6 @@ export class DanProvider extends Base<Id, ScoreId> {
       with: {
         requirements: {
           columns: {
-            id: true,
             condId: true,
             type: true,
           },
@@ -76,21 +75,20 @@ export class DanProvider extends Base<Id, ScoreId> {
   }
 
   async getDanWithRequirements(dan: {
-    id: number
+    id: Id
     name: string
-    creator: number | null
     createdAt: Date
     description: string | null
-    updater: number | null
+    creator?: Id | null
+    updater?: Id | null
     updatedAt: Date
     requirements: {
-      id: number
-      type: 'pass' | 'no-pause'
-      condId: number
+      type: Requirement
+      condId: Id
     }[]
   },
   tx: Omit<typeof this.drizzle, '$client'> = this.drizzle
-  ) {
+  ): Promise<DatabaseDan<Id>> {
     // Extract root condition IDs from requirements
     const rootCondIds = dan.requirements.map(r => r.condId)
 
@@ -103,7 +101,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       }
       return {
         ...req,
-        id: req.id,
+        dan: dan.id,
         type: req.type === 'pass' ? Requirement.Pass : Requirement.NoPause,
         cond,
       }
@@ -113,6 +111,8 @@ export class DanProvider extends Base<Id, ScoreId> {
       ...dan,
       description: dan.description ?? '',
       requirements: requirementsWithConds,
+      creator: dan.creator ?? undefined,
+      updater: dan.updater ?? undefined,
     }
   }
 
@@ -233,13 +233,12 @@ export class DanProvider extends Base<Id, ScoreId> {
               ) AS JSON
             )`.as('possible_bids'),
 
-          requirements: sql<Array<{ type: Requirement; rootCond: Id; id: Id }>>`
+          requirements: sql<Array<{ type: Requirement; rootCond: Id }>>`
             CAST(
               CONCAT(
                 '[',
                 GROUP_CONCAT(
                   DISTINCT JSON_OBJECT(
-                    'id', ${danCondBindingLateral.id},
                     'type', ${danCondBindingLateral.type},
                     'rootCond', ${danCondBindingLateral.condId}
                   )
@@ -380,10 +379,13 @@ export class DanProvider extends Base<Id, ScoreId> {
         return result.map((i) => {
           const conds = this.#buildCondTreeMem(i.requirements.map(r => r.rootCond), i.fullTree.toSorted((a, b) => a.id - b.id))
           return {
-            ...pick(i, ['id', 'name', 'createdAt', 'creator', 'description', 'updatedAt', 'updater']),
+            ...pick(i, ['id', 'name', 'description']),
+            creator: i.creator ?? undefined,
+            updater: i.updater ?? undefined,
+            createdAt: i.createdAt,
+            updatedAt: i.updatedAt,
             requirements: i.requirements.map((req) => {
               return {
-                id: req.id,
                 type: req.type,
                 cond: conds[req.rootCond],
               }
@@ -412,7 +414,10 @@ export class DanProvider extends Base<Id, ScoreId> {
       eq(schema.beatmaps.server, schema.sources.server)
     ))
     .innerJoin(schema.requirementClearedScores, eq(schema.scores.id, schema.requirementClearedScores.scoreId))
-    .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.bindId, schema.requirementCondBindings.id))
+    .innerJoin(schema.requirementCondBindings, and(
+      eq(schema.requirementClearedScores.dan, schema.requirementCondBindings.danId),
+      eq(schema.requirementClearedScores.requirement, schema.requirementCondBindings.type),
+    ))
     .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
   // .innerJoin(schema.danConds, eq(schema.requirementCondBindings.condId, schema.danConds.id))
     .where(({ dan }) => eq(dan.id, sql.placeholder('danId')))
@@ -479,7 +484,10 @@ export class DanProvider extends Base<Id, ScoreId> {
 
     })
       .from(schema.requirementClearedScores)
-      .innerJoin(schema.requirementCondBindings, eq(schema.requirementClearedScores.bindId, schema.requirementCondBindings.id))
+      .innerJoin(schema.requirementCondBindings, and(
+        eq(schema.requirementClearedScores.dan, schema.requirementCondBindings.danId),
+        eq(schema.requirementClearedScores.requirement, schema.requirementCondBindings.type),
+      ))
       .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
       .innerJoin(sq, eq(schema.requirementClearedScores.scoreId, sq.id))
       .innerJoin(schema.beatmaps, eq(sq.mapMd5, schema.beatmaps.md5))
@@ -630,8 +638,11 @@ export class DanProvider extends Base<Id, ScoreId> {
           id: 'id' in i ? i.id : undefined,
           name: i.name,
           description: i.description,
-          creator: u.id,
+          creator: 'creator' in i ? i.creator : u.id,
           updater: u.id,
+          // updater: 'updater' in i ? i.updater : u.id,
+          createdAt: 'createdAt' in i ? new Date(i.createdAt) : undefined,
+          // updatedAt: 'updatedAt' in i ? i.updatedAt : undefined,
         })
         .onDuplicateKeyUpdate({
           set: {
@@ -977,7 +988,6 @@ FROM
       with: {
         requirements: {
           columns: {
-            id: true,
             condId: true,
             type: true,
           },
