@@ -93,10 +93,10 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
 
       await this.updateLastProcessed(tx)
 
-      this.logger.info(`found ${results.length} new requirement cleared scores`)
       if (!results.length) {
         return
       }
+      this.logger.info(`saving ${results.length} new requirement cleared scores`)
       await tx.insert(schema.requirementClearedScores).values(results)
     })
   }
