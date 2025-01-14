@@ -42,7 +42,11 @@ export function danSQLChunks<C extends Cond, AB extends RequirementCondBinding<R
     case OP.NoPause: {
       return sql`false`
     }
-    case OP.WithStableMod: {
+    case OP.StableModIncludeAny: {
+      const { val } = cond
+      return sql`${table.scores.mods} & ${val} > 0`
+    }
+    case OP.StableModIncludeAll: {
       const { val } = cond
       return sql`${table.scores.mods} & ${val} = ${val}`
     }

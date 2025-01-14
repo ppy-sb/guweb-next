@@ -50,7 +50,8 @@ const { t } = useI18n({
           [OP.RulesetEq]: 'Rule =',
           [OP.BanchoBeatmapIdEq]: 'Bancho bid =',
           [OP.BeatmapMd5Eq]: 'Beatmap MD5 =',
-          [OP.WithStableMod]: 'Played With Mod',
+          [OP.StableModIncludeAny]: 'Played with any Mod',
+          [OP.StableModIncludeAll]: 'Played with all Mod',
           [OP.Extends]: 'meet all requirements in',
           [OP.OR]: 'or',
           [OP.AND]: 'and',
@@ -73,7 +74,8 @@ const { t } = useI18n({
           [OP.RulesetEq]: '玩法 =',
           [OP.BanchoBeatmapIdEq]: 'Bancho 的 bid =',
           [OP.BeatmapMd5Eq]: 'Beatmap MD5 =',
-          [OP.WithStableMod]: '开 Mod',
+          [OP.StableModIncludeAny]: '至少加一个 Mod',
+          [OP.StableModIncludeAll]: '加全部 Mod',
           [OP.Extends]: '符合另一判定的所有条件',
           [OP.OR]: '满足其中一项',
           [OP.AND]: '满足所有条件',
@@ -97,7 +99,8 @@ const concrete = [
   OP.RulesetEq,
   OP.BanchoBeatmapIdEq,
   OP.BeatmapMd5Eq,
-  OP.WithStableMod,
+  OP.StableModIncludeAny,
+  OP.StableModIncludeAll,
   OP.Extends,
   OP.NoPause,
 ] as const
@@ -247,7 +250,7 @@ zh-CN:
             {{ t('reset') }} <icon name="lsicon:clear-filled" />
           </button>
         </template>
-        <template v-else-if="cond.type === OP.WithStableMod">
+        <template v-else-if="cond.type === OP.StableModIncludeAny || cond.type === OP.StableModIncludeAll">
           <div class="hidden sm:block sm:col-span-4 md:col-span-7" />
           <button v-if="listMode" :disabled="disabled" class="col-span-6 sm:col-span-2 btn btn-sm btn-error btn-outline" @click="emit('delete')">
             {{ t('delete') }} <icon name="material-symbols:delete" />
