@@ -108,9 +108,6 @@ function unDB<T extends DatabaseDan<string>>(val: T): T {
   val = validateUsecase(val)
   ;(val as any)._db = false
   val.id = ''
-  val.requirements.forEach((r) => {
-    r.id = ''
-  })
   return val
 }
 

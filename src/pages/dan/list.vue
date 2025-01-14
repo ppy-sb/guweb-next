@@ -109,9 +109,9 @@ zh-CN:
       </div>
     </form>
 
-    <div class="space-y-4 relative pt-4">
+    <div class="relative pt-4 space-y-4">
       <div
-        v-for="item in data" :key="item.id" class="relative w-full bg-base-100 ps-3 rounded-lg transition-all"
+        v-for="item in data" :key="item.id" class="relative w-full transition-all rounded-lg bg-base-100 ps-3"
         :class="{
           'blur opacity-30': status === 'pending',
         }"
@@ -129,7 +129,7 @@ zh-CN:
             <nuxt-link-locale v-if="session.role.staff" class="btn" :to="{ name: 'dan-compose', query: { id: item.id } }">
               Edit
             </nuxt-link-locale>
-            <dan-explain-requirement v-for="requirement in item.requirements" :key="requirement.id" :requirement="requirement" />
+            <dan-explain-requirement v-for="requirement in item.requirements" :key="requirement.type" :requirement="requirement" />
             <nuxt-link-locale
               :to="{
                 name: 'dan-id-detail',
@@ -145,7 +145,7 @@ zh-CN:
         </div>
       </div>
       <div
-        class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 transition-opacity"
+        class="absolute transition-opacity -translate-x-1/2 -translate-y-1/2 opacity-0 pointer-events-none left-1/2 top-1/2"
         :class="{
           'opacity-100': status === 'pending',
         }"

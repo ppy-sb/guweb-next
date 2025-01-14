@@ -23,8 +23,8 @@ export enum OP {
   NoPause = 'no-pause',
   AccGte = 'acc-gte',
   ScoreGte = 'score-gte',
-  StableModIncludeAny = 'stable/with-mod',
-  StableModIncludeAll = 'stable/with-all-mod',
+  StableModIncludeAny = 'stable/mod-contains-any',
+  StableModIncludeAll = 'stable/mod-contains-all',
 }
 
 export interface CondBase<O> {
@@ -83,7 +83,9 @@ export interface RequirementCondBinding<R, C> {
   cond: C
 }
 
-export interface DatabaseRequirementCondBinding<I, R, C> extends RequirementCondBinding<R, C>, WithId<I> {}
+export interface DatabaseRequirementCondBinding<I, R, C> extends RequirementCondBinding<R, C> {
+  // dan: I
+}
 
 export interface Dan<RCBinding extends RequirementCondBinding<Requirement, Cond> = RequirementCondBinding<Requirement, Cond>> {
   name: string
@@ -92,7 +94,12 @@ export interface Dan<RCBinding extends RequirementCondBinding<Requirement, Cond>
   requirements: readonly RCBinding[]
 }
 
-export interface DatabaseDan<I, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> extends Dan<RCBinding>, WithId<I> {}
+export interface DatabaseDan<I, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> extends Dan<RCBinding>, WithId<I> {
+  creator?: I
+  updater?: I
+  createdAt: Date
+  updatedAt: Date
+}
 
 export type DetailResult<
   C extends Cond = Cond,
@@ -126,7 +133,7 @@ C extends ConcreteCond<infer R extends ExtendingCondOP, infer T extends Requirem
           }
         : never
 
-export type DatabaseDetailResult<I, C extends Cond = Cond, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> = DetailResult<C, RCBinding> & WithId<I>
+// export type DatabaseDetailResult<I, C extends Cond = Cond, RCBinding extends DatabaseRequirementCondBinding<I, Requirement, Cond> = DatabaseRequirementCondBinding<I, Requirement, Cond>> = DetailResult<C, RCBinding> & WithId<I>
 
 export type RequirementResult<AB extends RequirementCondBinding<Requirement, Cond> = RequirementCondBinding<Requirement, Cond>> =
   AB extends RequirementCondBinding<infer A extends Requirement, infer C extends Cond>

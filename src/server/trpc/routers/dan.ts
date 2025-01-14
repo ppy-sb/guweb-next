@@ -1,4 +1,4 @@
-import { any, boolean, nativeEnum, number, object, string } from 'zod'
+import { type ZodSchema, any, boolean, nativeEnum, number, object, string } from 'zod'
 import { type DanProvider as BaseDanProvider } from '../../backend/$base/server'
 import { staffProcedure } from '../middleware/role'
 import { router as _router, publicProcedure } from '../trpc'
@@ -6,7 +6,7 @@ import { zodMode, zodRuleset } from '../shapes'
 import { validateUsecase } from '~/common/utils/dan'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, Requirement } from '~/def/dan'
 import { Feature } from '~/def/features'
-import { DanProvider, ScoreProvider, dans } from '~/server/singleton/service'
+import { DanProvider, ScoreProvider, UserProvider, dans } from '~/server/singleton/service'
 
 export const router = _router({
   search: publicProcedure
@@ -23,9 +23,10 @@ export const router = _router({
       return searchResult.map(i => ({
         ...i,
         id: DanProvider.idToString(i.id),
+        creator: i.creator ? UserProvider.idToString(i.creator) : undefined,
+        updater: i.updater ? UserProvider.idToString(i.updater) : undefined,
         requirements: i.requirements.map(i => ({
           ...i,
-          id: DanProvider.idToString(i.id),
         })) satisfies DatabaseRequirementCondBinding<string, Requirement, Cond>[],
       })) satisfies DatabaseDan<string>[]
     }),
@@ -44,24 +45,18 @@ export const router = _router({
   save: withFeatureFlag(staffProcedure, Feature.Dan)
     .input(
       any()
-        .refine((i): i is DatabaseDan<string> => !!validateUsecase(i as DatabaseDan<string>))
+        .refine((i): i is DatabaseDan<string> => !!validateUsecase(i as DatabaseDan<string>)) as ZodSchema<DatabaseDan<string>>
     )
     .mutation(async ({ input, ctx }) => {
       const i = await dans.saveComposed({
         ...input,
         id: input.id ? DanProvider.stringToId(input.id) : undefined,
-        requirements: input.requirements.map(i => ({
-          ...i,
-          id: i.id ? DanProvider.stringToId(i.id) : undefined,
-        })),
+        requirements: input.requirements,
       }, ctx.user)
       return {
         ...i,
         id: DanProvider.idToString(i.id),
-        requirements: i.requirements.map(i => ({
-          ...i,
-          id: DanProvider.idToString(i.id),
-        })),
+        requirements: i.requirements,
       }
     }),
 
@@ -146,12 +141,5 @@ export const router = _router({
 })
 
 function transformDan(res: DatabaseDan<any>): DatabaseDan<string> {
-  return {
-    ...res,
-    id: DanProvider.idToString(res.id),
-    requirements: res.requirements.map(i => ({
-      ...i,
-      id: DanProvider.idToString(i.id),
-    })),
-  }
+  return mapId(res, DanProvider.idToString)
 }
