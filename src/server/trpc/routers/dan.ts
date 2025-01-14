@@ -126,7 +126,7 @@ export const router = _router({
       const data = await dans.getUserClearedDans({
         user: { id: DanProvider.stringToId(input.id) },
         page: input.page,
-        perPgae: input.perPage,
+        perPage: input.perPage,
       })
 
       return data.map((item) => {

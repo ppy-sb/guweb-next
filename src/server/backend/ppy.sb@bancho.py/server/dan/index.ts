@@ -161,6 +161,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     return Object.fromEntries(ids.map(id => [id, transformCond(condMap.get(id) ?? throwGucchoError(GucchoError.DanNotFound))]))
   }
 
+  // TODO delete requirement
   async delete(id: number): Promise<void> {
     await this.drizzle.transaction(async (tx) => {
       await tx.delete(schema.requirementCondBindings).where(eq(schema.requirementCondBindings.danId, id))
@@ -616,6 +617,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     )
   }
 
+  // TODO process old scores after saving
   async saveComposed(
     i: Dan | DatabaseDan<Id>,
     u: Pick<UserCompact<Id>, 'id'>

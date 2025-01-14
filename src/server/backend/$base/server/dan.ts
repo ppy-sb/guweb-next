@@ -52,5 +52,6 @@ export abstract class DanProvider<Id, ScoreId> extends Mixin(IdTransformable, Sc
   abstract getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>>
   abstract runCustomDan(opt: Dan): Promise<Array<DanProvider.RequirementQualifiedScore<Id, ScoreId>>>
   abstract saveComposed(i: Dan | DatabaseDan<Id>, user: Pick<UserCompact<Id>, 'id'>): Promise<DatabaseDan<Id>>
-  abstract getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPgae: number }): Promise<Array<DanProvider.UserDanClearedScore<Id, ScoreId>>>
+  abstract getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage: number }): Promise<Array<DanProvider.UserDanClearedScore<Id, ScoreId>>>
+  abstract exportAll(): Promise<DatabaseDan<Id>[]>
 }
