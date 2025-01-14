@@ -107,12 +107,21 @@ function formatDate(dateString: Date) {
             >
 
           </div> -->
-          <div class="flex flex-col gap-4 p-4 backdrop-blur-xl md:flex-row ">
+          <div class="flex flex-col gap-4 backdrop-blur-xl md:flex-row ">
             <!-- Beatmap Cover Image -->
             <img
               :src="item.score.beatmap.beatmapset.assets.list"
+              :srcset="`${item.score.beatmap.beatmapset.assets.list} 1x, ${item.score.beatmap.beatmapset.assets['list@2x']} 2x`"
               :alt="autoLocale(item.score.beatmap.beatmapset.meta).title"
-              class="h-40 border rounded dark:border-base-300"
+              class="hidden object-cover h-40 border rounded dark:border-base-300 md:block"
+              loading="lazy"
+              :onerror="placeholder"
+            >
+            <!-- :srcset="`${item.score.beatmap.beatmapset.assets.cover} 1x, ${item.score.beatmap.beatmapset.assets['cover@2x']} 2x`" -->
+            <img
+              :src="item.score.beatmap.beatmapset.assets.cover"
+              :alt="autoLocale(item.score.beatmap.beatmapset.meta).title"
+              class="object-cover h-40 border rounded dark:border-base-300 md:hidden"
               loading="lazy"
               :onerror="placeholder"
             >
