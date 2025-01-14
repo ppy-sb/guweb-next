@@ -5,7 +5,7 @@ import { type Pagination } from '~/def/pagination'
 import { type UserCompact } from '~/def/user'
 import type { Mode, Ruleset } from '~/def'
 import { type ScoreCompact } from '~/def/score'
-import { type BaseBeatmapset, type BeatmapCompact, Beatmapset } from '~/def/beatmap'
+import { type BaseBeatmapset, type BeatmapCompact } from '~/def/beatmap'
 
 export namespace DanProvider {
   export interface QualifiedScore<Id, ScoreId> {

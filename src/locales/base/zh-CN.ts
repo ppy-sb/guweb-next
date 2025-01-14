@@ -2,7 +2,7 @@ import type { GlobalI18n } from '../@types'
 import { Rank } from '~/def'
 import { RankingStatus } from '~/def/beatmap'
 import { CountryCode } from '~/def/country-code'
-import { OP, Requirement } from '~/def/dan'
+import { Requirement } from '~/def/dan'
 import { Mail } from '~/def/mail'
 import { GucchoError } from '~/def/messages'
 import { Scope, UserRole } from '~/def/user'
@@ -155,21 +155,6 @@ export default {
     requirement: {
       [Requirement.Pass]: '通过',
       [Requirement.NoPause]: '无暂停',
-    },
-    cond: {
-      [OP.AccGte]: '准确度 ≥ {val}',
-      [OP.ScoreGte]: '总分 ≥ {val}',
-      [OP.ModeEq]: '{val} 模式',
-      [OP.RulesetEq]: '{val} 玩法',
-      [OP.BanchoBeatmapIdEq]: '在 Bancho 的铺面ID = {val}',
-      [OP.BeatmapMd5Eq]: '铺面 MD5 = {val}',
-      [OP.WithStableMod]: '加 {val} mod(s)',
-      [OP.Extends]: '满足 {val} 的全部条件',
-      [OP.OR]: '满足至少一项',
-      [OP.AND]: '满足所有条件',
-      [OP.NOT]: '不可以',
-      [OP.Remark]: 'Remark: {remark} {val}',
-      [OP.NoPause]: '无暂停',
     },
   },
   country: {

@@ -40,13 +40,6 @@ export function pretty_result(
   return msg.concat(...res.map(res => fmtDanResult(res, 1).flat()))
 }
 
-function sp(n: number) {
-  return '  '.repeat(n)
-}
-function b(_b: boolean) {
-  return _b ? '✓' : '✗'
-}
-
 export function fmtDanResult(
   detail: RequirementResult | DetailResult<Cond>,
   indent: number = 0
@@ -105,7 +98,8 @@ export function fmt_cond<D extends DetailResult>(detail: D, value: D extends { v
       return `Plug(${remark})`
     }
 
-    case OP.WithStableMod:
+    case OP.StableModIncludeAny:
+    case OP.StableModIncludeAll:
     {
       const { val } = cond
       return `${$op.getKeyOrDefault(type)} ${StableMod[val]}`
@@ -211,11 +205,21 @@ export function run_cond<C extends Cond, AB extends RequirementCondBinding<Requi
         value: score.nonstop,
       } as DetailResult<C, AB>
     }
-    case OP.WithStableMod: {
+    case OP.StableModIncludeAny: {
       const { val } = cond
+      const stbMod = mergeStableMods(score.mods)
       return {
         cond,
-        result: score.mods.includes(val),
+        result: (stbMod & val) !== 0,
+        value: val,
+      } as DetailResult<C, AB>
+    }
+    case OP.StableModIncludeAll: {
+      const { val } = cond
+      const stbMod = mergeStableMods(score.mods)
+      return {
+        cond,
+        result: (stbMod & val) === val,
         value: val,
       } as DetailResult<C, AB>
     }
@@ -353,8 +357,8 @@ export function $scoreGte<C>(val: C): ConcreteCond<OP.ScoreGte, C> {
   return { type: OP.ScoreGte, val }
 }
 
-export function $withStableMod<C extends StableMod>(mod: C): ConcreteCond<OP.WithStableMod, C> {
-  return { type: OP.WithStableMod, val: mod }
+export function $withStableMod<C extends StableMod>(mod: C): ConcreteCond<OP.StableModIncludeAny, C> {
+  return { type: OP.StableModIncludeAny, val: mod }
 }
 
 export function validateCond<T extends Cond>(cond: T): T {
@@ -364,7 +368,8 @@ export function validateCond<T extends Cond>(cond: T): T {
     case OP.AccGte:
     case OP.ScoreGte:
     case OP.ModeEq:
-    case OP.WithStableMod:
+    case OP.StableModIncludeAny:
+    case OP.StableModIncludeAll:
     case OP.RulesetEq:
     case OP.Extends:
       return { type: cond.type, val: cond.val } as T
@@ -393,4 +398,14 @@ export function validateUsecase<U extends Dan>(compose: U): U {
       cond: validateCond(i.cond),
     })),
   }
+}
+
+function sp(n: number) {
+  return '  '.repeat(n)
+}
+function b(_b: boolean) {
+  return _b ? '✓' : '✗'
+}
+function mergeStableMods(mods: StableMod[]): StableMod {
+  return mods.reduce((a, b) => a | b, 0 as StableMod)
 }
