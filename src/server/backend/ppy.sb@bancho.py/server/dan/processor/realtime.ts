@@ -27,7 +27,7 @@ export class RealtimeDanProcessor extends CacheSyncedDanProcessor implements Cac
       where: inArray(schema.users.id, insertedScore.map(item => item.userId)),
     })
 
-    for (const [_danId, dan] of this.dans) {
+    for (const [_, dan] of this.dans) {
       for (const score of insertedScore) {
         const bm = beatmaps.find(item => item.md5 === score.mapMd5)
         const [mode, ruleset] = fromBanchoPyMode(score.mode)
@@ -56,7 +56,8 @@ export class RealtimeDanProcessor extends CacheSyncedDanProcessor implements Cac
 
         await this.dp.drizzle.insert(schema.requirementClearedScores).values(passed.map(([_item, requirement]) => ({
           scoreId: score.id,
-          bindId: requirement.id,
+          dan: dan.id,
+          requirement: requirement.type,
         })))
       }
     }

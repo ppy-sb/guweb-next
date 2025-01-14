@@ -20,7 +20,6 @@ export class CacheSyncedDanProcessor extends BaseDanProcessor {
         with: {
           requirements: {
             columns: {
-              id: true,
               type: true,
               condId: true,
             },
@@ -57,7 +56,6 @@ export class CacheSyncedDanProcessor extends BaseDanProcessor {
         with: {
           requirements: {
             columns: {
-              id: true,
               type: true,
               condId: true,
             },
@@ -92,7 +90,6 @@ export class CacheSyncedDanProcessor extends BaseDanProcessor {
         with: {
           requirements: {
             columns: {
-              id: true,
               type: true,
               condId: true,
             },

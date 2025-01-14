@@ -1,6 +1,6 @@
 // keep relative imports for drizzle-kit
 import { relations } from 'drizzle-orm'
-import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, date, datetime, foreignKey, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, varchar } from 'drizzle-orm/mysql-core'
 import { clans, scores, users } from '../../bancho.py/drizzle/schema'
 import { OP, Requirement } from '../../../../def/dan'
 import { type ObjValueTuple } from '../../../../def/good-to-have'
@@ -97,29 +97,28 @@ export const danConds = mysqlTable('sb_dan_conds', {
 })
 
 export const requirementCondBindings = mysqlTable('sb_requirement_cond_bindings', {
-  id: int('id').autoincrement().notNull().primaryKey(),
-  type: mysqlEnum('requirement', Object.values(Requirement) as RequirementTuple).notNull(),
   danId: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  type: mysqlEnum('requirement', Object.values(Requirement) as RequirementTuple).notNull(),
   condId: int('cond').notNull().references(() => danConds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 }, table => [
-  uniqueIndex('dan_id_type').on(table.danId, table.type),
+  primaryKey({ columns: [table.danId, table.type], name: 'requirement_cond_binding_pk' }),
 ])
 
 export const requirementClearedScores = mysqlTable('sb_requirement_cleared_scores', {
+  dan: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+  requirement: mysqlEnum('requirement', Object.values(Requirement) as RequirementTuple).notNull(),
   scoreId: bigint('score_id', { mode: 'bigint', unsigned: true }).notNull(),
-  bindId: int('requirement').notNull(),
 }, tbl => [
   foreignKey({
-    columns: [tbl.bindId],
-    foreignColumns: [requirementCondBindings.id],
-    name: 'requirement_cleared_requirement',
-  }),
+    columns: [tbl.dan, tbl.requirement],
+    foreignColumns: [requirementCondBindings.danId, requirementCondBindings.type],
+    name: 'requirement_cleared_score_dan_id',
+  }).onDelete('cascade').onUpdate('cascade'),
   foreignKey({
     columns: [tbl.scoreId],
     foreignColumns: [scores.id],
     name: 'requirement_cleared_score_id',
-  }),
-  primaryKey({ columns: [tbl.scoreId, tbl.bindId], name: 'key0' }),
+  }).onDelete('cascade').onUpdate('cascade'),
 ])
 
 export const userpagesRelations = relations(userpages, ({ one }) => ({
@@ -146,5 +145,5 @@ export const requirementCondBindingRelations = relations(requirementCondBindings
 
 export const requirementClearedScoreRelations = relations(requirementClearedScores, ({ one }) => ({
   score: one(scores, { fields: [requirementClearedScores.scoreId], references: [scores.id] }),
-  requirement: one(requirementCondBindings, { fields: [requirementClearedScores.bindId], references: [requirementCondBindings.id] }),
+  requirement: one(requirementCondBindings, { fields: [requirementClearedScores.dan, requirementClearedScores.requirement], references: [requirementCondBindings.danId, requirementCondBindings.type] }),
 }))

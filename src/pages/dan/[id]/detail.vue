@@ -64,26 +64,26 @@ zh-CN:
 </i18n>
 
 <template>
-  <div class="container custom-container mx-auto px-4">
+  <div class="container px-4 mx-auto custom-container">
     <nuxt-link-locale v-if="session.role.staff" class="btn" :to="{ name: 'dan-compose', query: { id: item.id } }">
       Edit
     </nuxt-link-locale>
 
-    <h1 class="text-3xl link mb-2">
+    <h1 class="mb-2 text-3xl link">
       {{ item.name }}
     </h1>
     <p class="whitespace-pre-wrap">
       {{ item.description }}
     </p>
-    <dan-explain-requirement v-for="requirement in item.requirements" :key="requirement.id" :requirement="requirement" />
-    <h2 class="text-xl font-bold divider w-full">
+    <dan-explain-requirement v-for="requirement in item.requirements" :key="requirement.type" :requirement="requirement" />
+    <h2 class="w-full text-xl font-bold divider">
       {{ t('qf-scores') }}
     </h2>
-    <div v-for="requirement in item.requirements" :key="requirement.id">
-      <h3 class="text-lg mb-2 font-bold">
+    <div v-for="requirement in item.requirements" :key="requirement.type">
+      <h3 class="mb-2 text-lg font-bold">
         {{ t(tRequirement[requirement.type].__path__) }}
       </h3>
-      <div class="relative overflow-x-auto border rounded-md border-base-300 mb-2">
+      <div class="relative mb-2 overflow-x-auto border rounded-md border-base-300">
         <table
           class="table transition-all table-sm table-zebra"
           :class="{
