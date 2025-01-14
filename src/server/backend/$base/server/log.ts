@@ -76,7 +76,7 @@ export class LogProvider implements Monitored {
 
   static setupFileTransports() {
     observe(new winston.transports.File({ ...LogProvider.sharedBaseCfg, filename: LogProvider.error, level: 'error' }))
-    observe(new winston.transports.File({ ...LogProvider.sharedBaseCfg, filename: LogProvider.combined }))
+    observe(new winston.transports.File({ ...LogProvider.sharedBaseCfg, filename: LogProvider.combined, level: 'debug' }))
   }
 
   static async readLastNLinesFromFile(filePath: string, n: number, level: LogLevel): Promise<Record<any, any>[]> {
