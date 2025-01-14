@@ -1,10 +1,11 @@
 import assert from 'node:assert'
-import { and, eq, gt, inArray, not, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, not } from 'drizzle-orm'
 import { type DanProvider } from '..'
 import { danSQLChunks } from '../../../utils/sql-dan'
 import * as schema from '../../../drizzle/schema'
 import { type ScoreId } from '../../../'
 import { CacheSyncedDanProcessor } from './$sync'
+import { type Requirement } from '~/def/dan'
 
 // TODO implement
 export class IntervalDanProcessor extends CacheSyncedDanProcessor implements CacheSyncedDanProcessor {
@@ -58,13 +59,12 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
         return
       }
 
-      const results: { scoreId: ScoreId; bindId: number }[] = []
-      for (const [_danId, dan] of this.dans) {
+      const results: { scoreId: ScoreId; dan: number; requirement: Requirement }[] = []
+      for (const [_, dan] of this.dans) {
         for (const requirement of dan.requirements) {
           try {
             const res = await tx.select({
               scoreId: this.dp.tbl.scores.id,
-              bindId: sql<number>`${requirement.id}`.as('bind_id'),
             })
               .from(this.dp.tbl.scores)
               .innerJoin(this.dp.tbl.beatmaps, eq(this.dp.tbl.scores.mapMd5, this.dp.tbl.beatmaps.md5))
@@ -83,7 +83,11 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
                   )
                 )
               )
-            results.push(...res)
+            results.push(...res.map(item => ({
+              scoreId: item.scoreId,
+              dan: dan.id,
+              requirement: requirement.type,
+            })))
           }
           catch (e) {
             console.error(e)
