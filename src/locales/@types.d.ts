@@ -75,7 +75,6 @@ export interface GlobalI18n extends PathAccessibleObject {
   error: Record<GucchoError, string>
 
   dan: {
-    cond: Record<OP, string>
     requirement: Record<Requirement, string>
   }
 
