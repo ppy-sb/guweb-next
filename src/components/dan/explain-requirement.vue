@@ -3,7 +3,6 @@ import { type Cond, type Requirement } from '~/def/dan'
 
 defineProps<{
   requirement: {
-    id: string
     type: Requirement
     cond: Cond
   } }>()
