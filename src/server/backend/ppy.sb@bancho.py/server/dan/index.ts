@@ -971,6 +971,22 @@ FROM
       name,
     } as const
   }
+
+  async exportAll(): Promise<DatabaseDan<number, DatabaseRequirementCondBinding<number, Requirement, Cond>>[]> {
+    const dans = await this.drizzle.query.dans.findMany({
+      with: {
+        requirements: {
+          columns: {
+            id: true,
+            condId: true,
+            type: true,
+          },
+        },
+      },
+    })
+
+    return Promise.all(dans.map(item => this.getDanWithRequirements(item, this.drizzle)))
+  }
 }
 
 function transformCond(condNode: CondNode): Cond {
