@@ -797,7 +797,8 @@ export class DanProvider extends Base<Id, ScoreId> {
           case OP.AccGte:
           case OP.BanchoBeatmapIdEq:
           case OP.ScoreGte:
-          case OP.WithStableMod:
+          case OP.StableModIncludeAny:
+          case OP.StableModIncludeAll:
           case OP.Extends:
             valueStr = cond.val.toString()
             break
@@ -809,7 +810,7 @@ export class DanProvider extends Base<Id, ScoreId> {
             valueStr = cond.val
             break
           default:
-            throw new Error(`Unsupported condition type ${(cond as any).type}`)
+            assertNotReachable(cond)
         }
 
         // Insert the leaf condition
@@ -1003,7 +1004,8 @@ function transformCond(condNode: CondNode): Cond {
     case OP.AccGte:
     case OP.BanchoBeatmapIdEq:
     case OP.ScoreGte:
-    case OP.WithStableMod:
+    case OP.StableModIncludeAny:
+    case OP.StableModIncludeAll:
       // Leaf condition
       return {
         type,
