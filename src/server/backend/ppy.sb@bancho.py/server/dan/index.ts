@@ -27,6 +27,7 @@ import { validateCond } from '~/common/utils/dan'
 import { Mode, Ruleset } from '~/def'
 import { config } from '$active/env'
 import { type Grade } from '~/def/score'
+import { type PaginatedResult } from '~/def/pagination'
 
 export class DanProvider extends Base<Id, ScoreId> {
   static readonly idToString = idToString
@@ -169,8 +170,8 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async search(a: { keyword: string; mode?: Mode; ruleset?: Ruleset; page: Id; perPage: Id; rulesetDefaultsToStandard?: boolean }): Promise<DatabaseDan<Id>[]> {
-    return this.drizzle.transaction(async (tx) => {
+  async search(a: { keyword: string; mode?: Mode; ruleset?: Ruleset; page: number; perPage: number; rulesetDefaultsToStandard?: boolean }): Promise<PaginatedResult<DatabaseDan<Id>>> {
+    return this.drizzle.transaction<PaginatedResult<DatabaseDan<Id>>>(async (tx) => {
       const dans = aliasedTable(schema.dans, 'd')
       const searchCondTree = this.#virtualTableDanTreeAlias('cond_tree')
       const danCondBinding = aliasedTable(schema.requirementCondBindings, 'dc')
@@ -207,7 +208,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       //     .groupBy(schema.beatmaps.id, schema.scores.mode)
       // )
 
-      const result = await tx
+      const _sql = tx
         // .with(sq_md5, sq_bid)
         .select({
           id: dans.id,
@@ -364,34 +365,44 @@ export class DanProvider extends Base<Id, ScoreId> {
         //   desc(sq_bid.count),
         // )
         .groupBy(dans.id)
-        .orderBy(
-          desc(dans.updatedAt),
-          desc(dans.id),
-        )
-        .limit(a.perPage)
-        .offset(a.page * a.perPage)
 
-      if (!result.length) {
-        return []
+      const count = await tx.$count(_sql.as('count'))
+
+      if (!count) {
+        return {
+          total: 0,
+          data: [],
+        } as PaginatedResult<DatabaseDan<Id>>
       }
 
       try {
-        return result.map((i) => {
-          const conds = this.#buildCondTreeMem(i.requirements.map(r => r.rootCond), i.fullTree.toSorted((a, b) => a.id - b.id))
-          return {
-            ...pick(i, ['id', 'name', 'description']),
-            creator: i.creator ?? undefined,
-            updater: i.updater ?? undefined,
-            createdAt: i.createdAt,
-            updatedAt: i.updatedAt,
-            requirements: i.requirements.map((req) => {
-              return {
-                type: req.type,
-                cond: conds[req.rootCond],
-              }
-            }),
-          }
-        })
+        const result = await _sql
+          .orderBy(
+            desc(dans.updatedAt),
+            desc(dans.id),
+          )
+          .limit(a.perPage)
+          .offset(a.page * a.perPage)
+
+        return {
+          total: count,
+          data: result.map((i) => {
+            const conds = this.#buildCondTreeMem(i.requirements.map(r => r.rootCond), i.fullTree.toSorted((a, b) => a.id - b.id))
+            return {
+              ...pick(i, ['id', 'name', 'description']),
+              creator: i.creator ?? undefined,
+              updater: i.updater ?? undefined,
+              createdAt: i.createdAt,
+              updatedAt: i.updatedAt,
+              requirements: i.requirements.map((req) => {
+                return {
+                  type: req.type,
+                  cond: conds[req.rootCond],
+                }
+              }),
+            }
+          }),
+        } satisfies PaginatedResult<DatabaseDan<Id>>
       }
       catch (e) {
         console.error(e)
