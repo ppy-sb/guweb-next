@@ -6,7 +6,7 @@ import type { Mode, Rank, Ruleset } from '~/def'
 import type { AbnormalStatus, NormalBeatmapWithMeta, RankingStatus } from '~/def/beatmap'
 import type { ClanRelation } from '~/def/clan'
 import type { LeaderboardRankingSystem } from '~/def/common'
-import type { PaginatedResult } from '~/def/pagination'
+import type { PaginatedResultTuple } from '~/def/pagination'
 import type { RankingSystemScore } from '~/def/score'
 
 export abstract class ClanProvider<Id> extends IdTransformable {
@@ -56,10 +56,10 @@ export namespace ClanProvider {
     clanId: Id
   }
 
-  export type SearchResult<Id> = PaginatedResult<ClanList<Id>>
+  export type SearchResult<Id> = PaginatedResultTuple<ClanList<Id>>
   export type DetailResult<Id> = ClanProvider.ClanDetail<Id>
-  export type UsersResult<Id> = PaginatedResult<UserProvider.UserCompact<Id>>
-  export type BestsResult<Id> = PaginatedResult<{
+  export type UsersResult<Id> = PaginatedResultTuple<UserProvider.UserCompact<Id>>
+  export type BestsResult<Id> = PaginatedResultTuple<{
     user: UserProvider.UserCompact<Id>
     score: RankingSystemScore<
         ScoreId,

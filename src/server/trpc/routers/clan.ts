@@ -6,7 +6,7 @@ import { Logger } from '$base/logger'
 import { type AbnormalStatus, type LocalBeatmapset, type NormalBeatmapWithMeta, type RankingStatus, type ReferencedBeatmapset } from '~/def/beatmap'
 import { type LeaderboardRankingSystem } from '~/def/common'
 import { Mode, Ruleset } from '~/def'
-import { Paginated, type PaginatedResult } from '~/def/pagination'
+import { Paginated, type PaginatedResultTuple } from '~/def/pagination'
 import type { UserCompact } from '~/def/user'
 import { ClanProvider, MapProvider, ScoreProvider, UserProvider, clanProvider } from '~/server/singleton/service'
 import type { RankingSystemScore } from '~/def/score'
@@ -45,7 +45,7 @@ export const router = _router({
     return [
       res[Paginated.Count],
       res[Paginated.Data].map(item => mapId(item, ClanProvider.idToString)),
-    ] as const satisfies PaginatedResult<UserCompact<string>>
+    ] as const satisfies PaginatedResultTuple<UserCompact<string>>
   }),
 
   bests: p.input(object({
@@ -82,7 +82,7 @@ export const router = _router({
           },
         }
       }),
-    ] satisfies PaginatedResult<{ user: UserCompact<string>; score: RankingSystemScore<string, string, Mode, LeaderboardRankingSystem> }>
+    ] satisfies PaginatedResultTuple<{ user: UserCompact<string>; score: RankingSystemScore<string, string, Mode, LeaderboardRankingSystem> }>
   }),
 
   relation: userProcedure.input(object({

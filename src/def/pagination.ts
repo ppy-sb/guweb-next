@@ -7,7 +7,15 @@ export const enum Paginated {
   Data,
 }
 
-export interface PaginatedResult<T> {
+/**
+ * @deprecated use `PaginatedResult`
+ */
+export interface PaginatedResultTuple<T> {
   [Paginated.Count]: number
   [Paginated.Data]: T[]
+}
+
+export interface PaginatedResult<T> {
+  total: number
+  data: T[]
 }
