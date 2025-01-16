@@ -109,38 +109,41 @@ zh-CN:
       </div>
     </form>
 
-    <div class="relative pt-4 space-y-4">
+    <div v-if="data" class="relative pt-4 space-y-4">
+      <span class="text-gbase-500 text-sm">found {{ data.total }} results.</span>
       <div
-        v-for="item in data" :key="item.id" class="relative w-full transition-all rounded-lg bg-base-100 ps-3"
+        v-for="item in data.data" :key="item.id" class="relative w-full transition-all rounded-lg bg-base-100 ps-3"
         :class="{
           'blur opacity-30': status === 'pending',
         }"
       >
         <div class="p-0 collapse collapse-plus">
-          <input type="checkbox" checked>
+          <input type="checkbox">
           <div class="text-xl font-medium collapse-title ps-0">
             {{ item.name }}
           </div>
 
           <div class="p-0 m-0 space-y-4 overflow-auto leading-relaxed collapse-content">
-            <p class="whitespace-pre-wrap">
+            <p class="whitespace-pre-wrap text-sm">
               {{ item.description }}
             </p>
-            <nuxt-link-locale v-if="session.role.staff" class="btn" :to="{ name: 'dan-compose', query: { id: item.id } }">
-              Edit
-            </nuxt-link-locale>
             <dan-explain-requirement v-for="requirement in item.requirements" :key="requirement.type" :requirement="requirement" />
-            <nuxt-link-locale
-              :to="{
-                name: 'dan-id-detail',
-                params: {
-                  id: item.id,
-                },
-              }"
-              class="btn btn-primary"
-            >
-              {{ t('detail') }}
-            </nuxt-link-locale>
+            <div class="space-x-2">
+              <nuxt-link-locale
+                :to="{
+                  name: 'dan-id-detail',
+                  params: {
+                    id: item.id,
+                  },
+                }"
+                class="btn btn-primary btn-sm"
+              >
+                {{ t('detail') }}
+              </nuxt-link-locale>
+              <nuxt-link-locale v-if="session.role.staff" class="btn btn-sm" :to="{ name: 'dan-compose', query: { id: item.id } }">
+                Edit
+              </nuxt-link-locale>
+            </div>
           </div>
         </div>
       </div>
