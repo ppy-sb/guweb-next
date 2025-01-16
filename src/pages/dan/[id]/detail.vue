@@ -65,10 +65,6 @@ zh-CN:
 
 <template>
   <div class="container px-4 mx-auto custom-container">
-    <nuxt-link-locale v-if="session.role.staff" class="btn" :to="{ name: 'dan-compose', query: { id: item.id } }">
-      Edit
-    </nuxt-link-locale>
-
     <h1 class="mb-2 text-3xl link">
       {{ item.name }}
     </h1>
@@ -76,6 +72,11 @@ zh-CN:
       {{ item.description }}
     </p>
     <dan-explain-requirement v-for="requirement in item.requirements" :key="requirement.type" :requirement="requirement" />
+    <div class="space-x-2 mt-2 text-right">
+      <nuxt-link-locale v-if="session.role.staff" class="btn btn-sm" :to="{ name: 'dan-compose', query: { id: item.id } }">
+        Edit
+      </nuxt-link-locale>
+    </div>
     <h2 class="w-full text-xl font-bold divider">
       {{ t('qf-scores') }}
     </h2>
