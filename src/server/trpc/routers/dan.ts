@@ -7,6 +7,7 @@ import { validateUsecase } from '~/common/utils/dan'
 import { type Cond, type Dan, type DatabaseDan, type DatabaseRequirementCondBinding, Requirement } from '~/def/dan'
 import { Feature } from '~/def/features'
 import { DanProvider, ScoreProvider, UserProvider, dans } from '~/server/singleton/service'
+import { type PaginatedResult } from '~/def/pagination'
 
 export const router = _router({
   search: publicProcedure
@@ -20,15 +21,18 @@ export const router = _router({
     }))
     .query(async ({ input }) => {
       const searchResult = await dans.search(input)
-      return searchResult.map(i => ({
-        ...i,
-        id: DanProvider.idToString(i.id),
-        creator: i.creator ? UserProvider.idToString(i.creator) : undefined,
-        updater: i.updater ? UserProvider.idToString(i.updater) : undefined,
-        requirements: i.requirements.map(i => ({
+      return {
+        total: searchResult.total,
+        data: searchResult.data?.map(i => ({
           ...i,
-        })) satisfies DatabaseRequirementCondBinding<string, Requirement, Cond>[],
-      })) satisfies DatabaseDan<string>[]
+          id: DanProvider.idToString(i.id),
+          creator: i.creator ? UserProvider.idToString(i.creator) : undefined,
+          updater: i.updater ? UserProvider.idToString(i.updater) : undefined,
+          requirements: i.requirements.map(i => ({
+            ...i,
+          })) satisfies DatabaseRequirementCondBinding<string, Requirement, Cond>[],
+        })) satisfies DatabaseDan<string>[],
+      } as PaginatedResult<DatabaseDan<string>>
     }),
 
   get: withFeatureFlag(publicProcedure, Feature.Dan)

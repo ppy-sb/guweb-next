@@ -1,7 +1,7 @@
 import { Mixin } from 'ts-mixer'
 import { IdTransformable, ScoreIdTransformable } from './@extends'
 import { type Dan, type DatabaseDan, type Requirement } from '~/def/dan'
-import { type Pagination } from '~/def/pagination'
+import { type PaginatedResult, type Pagination } from '~/def/pagination'
 import { type UserCompact } from '~/def/user'
 import type { Mode, Ruleset } from '~/def'
 import { type ScoreCompact } from '~/def/score'
@@ -46,7 +46,7 @@ export namespace DanProvider {
   }
 }
 export abstract class DanProvider<Id, ScoreId> extends Mixin(IdTransformable, ScoreIdTransformable) {
-  abstract search(opt: { keyword: string; mode?: Mode; ruleset?: Ruleset; rulesetDefaultsToStandard?: boolean } & Pagination): Promise<Array<DatabaseDan<Id>>>
+  abstract search(opt: { keyword: string; mode?: Mode; ruleset?: Ruleset; rulesetDefaultsToStandard?: boolean } & Pagination): Promise<PaginatedResult<DatabaseDan<Id>>>
   abstract get(id: Id): Promise<DatabaseDan<Id>>
   abstract delete(id: Id): Promise<void>
   abstract getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>>
