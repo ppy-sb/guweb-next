@@ -1,6 +1,8 @@
 import mysql from 'mysql2/promise'
 import { config } from '../../env'
 
-export default mysql.createPool({
+const pool = mysql.createPool({
   uri: config().dsn,
 })
+
+export default pool
