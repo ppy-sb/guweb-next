@@ -1,4 +1,5 @@
 import { type InferInsertModel, aliasedTable, and, asc, count, desc, eq, exists, getTableName, inArray, like, or, sql } from 'drizzle-orm'
+import { type MySql2Database } from 'drizzle-orm/mysql2'
 import { danSQLChunks } from '../../utils/sql-dan'
 import { type Id, type ScoreId, hasRuleset } from '../..'
 import { BanchoPyScoreStatus } from '../../../bancho.py/enums'
@@ -29,6 +30,8 @@ import { config } from '$active/env'
 import { type Grade } from '~/def/score'
 import { type PaginatedResult } from '~/def/pagination'
 
+type Database = MySql2Database<typeof schema>
+
 export class DanProvider extends Base<Id, ScoreId> {
   static readonly idToString = idToString
   static readonly stringToId = stringToId
@@ -43,16 +46,22 @@ export class DanProvider extends Base<Id, ScoreId> {
       : new IntervalDanProcessor(this as DanProvider & { config: { dan: { interval: number } } })
     : new NoopDanProcessor(this)
 
+  readonly tbl = {
+    users: schema.users,
+    scores: schema.scores,
+    beatmaps: schema.beatmaps,
+    sources: schema.sources,
+
+    requirementClearedScores: schema.requirementClearedScores,
+  }
+
   constructor() {
     super()
     this.processor.init()
   }
 
   drizzle = useDrizzle(schema)
-  async get(
-    id: Id,
-  tx: Omit<typeof this.drizzle, '$client'> = this.drizzle
-  ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
+  async get(id: Id, tx: Database = this.drizzle): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
     const dan = await tx.query.dans.findFirst({
       where(fields, operators) {
         return operators.eq(fields.id, id)
@@ -88,7 +97,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       condId: Id
     }[]
   },
-  tx: Omit<typeof this.drizzle, '$client'> = this.drizzle
+    tx: Database = this.drizzle
   ): Promise<DatabaseDan<Id>> {
     // Extract root condition IDs from requirements
     const rootCondIds = dan.requirements.map(r => r.condId)
@@ -117,7 +126,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     }
   }
 
-  async #fetchAndBuildCondTree(ids: Id[], tx: Omit<typeof this.drizzle, '$client'>): Promise<Record<Id, Cond>> {
+  async #fetchAndBuildCondTree(ids: Id[], tx: Database): Promise<Record<Id, Cond>> {
     // Fetch all conditions starting from rootCondIds using a recursive CTE
     const [conditionsResult] = await tx.execute(
       sql`
@@ -170,7 +179,14 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async search(a: { keyword: string; mode?: Mode; ruleset?: Ruleset; page: number; perPage: number; rulesetDefaultsToStandard?: boolean }): Promise<PaginatedResult<DatabaseDan<Id>>> {
+  async search(a: {
+    keyword: string
+    mode?: Mode
+    ruleset?: Ruleset
+    page: number
+    perPage: number
+    rulesetDefaultsToStandard?: boolean
+  }): Promise<PaginatedResult<DatabaseDan<Id>>> {
     return this.drizzle.transaction<PaginatedResult<DatabaseDan<Id>>>(async (tx) => {
       const dans = aliasedTable(schema.dans, 'd')
       const searchCondTree = this.#virtualTableDanTreeAlias('cond_tree')
@@ -285,7 +301,7 @@ export class DanProvider extends Base<Id, ScoreId> {
 
               // search conditions
               and(
-              // must be truthy conditions
+                // must be truthy conditions
                 eq(searchCondTree.column.truthy, 1),
 
                 or(
@@ -430,7 +446,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       eq(schema.requirementClearedScores.requirement, schema.requirementCondBindings.type),
     ))
     .innerJoin(schema.dans, eq(schema.requirementCondBindings.danId, schema.dans.id))
-  // .innerJoin(schema.danConds, eq(schema.requirementCondBindings.condId, schema.danConds.id))
+    // .innerJoin(schema.danConds, eq(schema.requirementCondBindings.condId, schema.danConds.id))
     .where(({ dan }) => eq(dan.id, sql.placeholder('danId')))
     .limit(100)
     .prepare()
@@ -545,23 +561,42 @@ export class DanProvider extends Base<Id, ScoreId> {
       return { count: 0, scores: [] }
     }
 
-    const _sql = this.runCustomDanSql(this.drizzle)
-      .orderBy(desc(this.tbl.scores.score))
+    const _sql = this.drizzle.select({
+      player: {
+        id: this.tbl.users.id,
+        name: this.tbl.users.name,
+      },
+      score: {
+        id: this.tbl.scores.id,
+        accuracy: this.tbl.scores.accuracy,
+        score: this.tbl.scores.score,
+      },
+      beatmap: {
+        id: this.tbl.beatmaps.id,
+        md5: this.tbl.beatmaps.md5,
+        title: this.tbl.beatmaps.title,
+        artist: this.tbl.beatmaps.artist,
+        version: this.tbl.beatmaps.version,
+      },
+    })
+      .from(this.tbl.scores)
+      .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+      .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
 
-    const count
-    = await this.drizzle.$count(
-      this.drizzle.select({ count: sql`1` })
-        .from(this.tbl.scores)
-        .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
-        .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
-        .orderBy(desc(this.tbl.scores.score))
-        .where(and(
+    const _count = await this.drizzle
+      .select({ count: count() })
+      .from(this.tbl.scores)
+      .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+      .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
+      .where(
+        and(
           eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
           danSQLChunks(req, dan.requirements, this.tbl),
-        )).as('sq')
-    )
+        )
+      )
+      .limit(1).then(res => res[0].count)
 
-    if (!count) {
+    if (!_count) {
       return { count: 0, scores: [] }
     }
 
@@ -576,64 +611,76 @@ export class DanProvider extends Base<Id, ScoreId> {
       .limit(perPage)
 
     return {
-      count,
+      count: _count,
       scores: res,
     }
   }
 
-  readonly tbl = {
-    users: schema.users,
-    scores: schema.scores,
-    beatmaps: schema.beatmaps,
-    sources: schema.sources,
-  }
-
-  readonly runCustomDanSql = (tx: Omit<typeof this.drizzle, '$client'>) => tx.select({
-    player: {
-      id: this.tbl.users.id,
-      name: this.tbl.users.name,
-    },
-    score: {
-      id: this.tbl.scores.id,
-      accuracy: this.tbl.scores.accuracy,
-      score: this.tbl.scores.score,
-    },
-    beatmap: {
-      id: this.tbl.beatmaps.id,
-      md5: this.tbl.beatmaps.md5,
-      title: this.tbl.beatmaps.title,
-      artist: this.tbl.beatmaps.artist,
-      version: this.tbl.beatmaps.version,
-    },
-  })
-    .from(this.tbl.scores)
-    .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
-    .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
-
   async runCustomDan(opt: Dan): Promise<Array<Base.RequirementQualifiedScore<Id, ScoreId>>> {
-    return await Promise.all(
-      opt.requirements.map(
-        async (a) => {
-          const _sql = this.runCustomDanSql(this.drizzle)
-            .orderBy(desc(this.tbl.scores.score))
-            .limit(10)
+    return await this.drizzle.transaction(async (tx) => {
+      const q = tx.select({
+        player: {
+          id: this.tbl.users.id,
+          name: this.tbl.users.name,
+        },
+        score: {
+          id: this.tbl.scores.id,
+          accuracy: this.tbl.scores.accuracy,
+          score: this.tbl.scores.score,
+        },
+        beatmap: {
+          id: this.tbl.beatmaps.id,
+          md5: this.tbl.beatmaps.md5,
+          title: this.tbl.beatmaps.title,
+          artist: this.tbl.beatmaps.artist,
+          version: this.tbl.beatmaps.version,
+        },
+      })
+        .from(this.tbl.scores)
+        .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+        .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
+
+      // opt.requirements.sort((a, b) => b.type === Requirement.NoPause ? -1 : 1)
+
+      return await Promise.all(
+        opt.requirements.map(async (a) => {
+          const _count = await tx
+            .select({ count: count() })
+            .from(this.tbl.scores)
+            .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+            .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
             .where(
               and(
                 eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
                 danSQLChunks(a.cond, opt.requirements, this.tbl),
               )
             )
+            .limit(1)
+            .then(res => res[0].count)
 
-          const sql = await _sql.execute()
-          const count = await this.drizzle.$count(this.runCustomDanSql(this.drizzle))
+          if (!_count) {
+            return { requirement: a.type, count: 0, scores: [] }
+          }
+
+          const _sql = q
+            .where(
+              and(
+                eq(this.tbl.scores.status, BanchoPyScoreStatus.Pick),
+                danSQLChunks(a.cond, opt.requirements, this.tbl),
+              )
+            )
+            .orderBy(desc(this.tbl.scores.score))
+            .limit(10)
+
           return {
             requirement: a.type,
-            count,
-            scores: sql,
+            count: _count,
+            scores: await _sql,
           }
         }
+        )
       )
-    )
+    })
   }
 
   // TODO process old scores after saving
@@ -642,7 +689,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     u: Pick<UserCompact<Id>, 'id'>
   ): Promise<DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>> {
     return await this.drizzle.transaction(async (tx) => {
-    // 1. Insert or update the dan record
+      // 1. Insert or update the dan record
       const [result] = await tx
         .insert(schema.dans)
         .values({
@@ -684,7 +731,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       const types: InferInsertModel<typeof schema.requirementCondBindings>[] = []
       // 3. Save new conditions and their tree structures
       for (const r of i.requirements) {
-      // Validate the condition
+        // Validate the condition
         r.cond = validateCond(r.cond)
 
         // Recursively save the condition tree and get the root condition ID
@@ -722,13 +769,13 @@ export class DanProvider extends Base<Id, ScoreId> {
 
   private async saveCondTree(
     cond: Cond,
-    tx: Omit<typeof this.drizzle, '$client'>,
+    tx: Database,
     parentId: number | null
   ): Promise<number> {
     switch (cond.type) {
       case OP.AND:
       case OP.OR: {
-      // Insert current condition node
+        // Insert current condition node
         const [res] = await tx
           .insert(schema.danConds)
           .values({
@@ -796,7 +843,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         return currentId
       }
       case OP.NoPause: {
-      // Leaf condition with no value
+        // Leaf condition with no value
         const [res] = await tx
           .insert(schema.danConds)
           .values({
@@ -813,7 +860,7 @@ export class DanProvider extends Base<Id, ScoreId> {
         return currentId
       }
       default: {
-      // Leaf conditions with a value
+        // Leaf conditions with a value
         let valueStr: string
         switch (cond.type) {
           case OP.AccGte:
@@ -854,7 +901,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     }
   }
 
-  private async deleteCondNodeWithChildren(condId: number, tx: Omit<typeof this.drizzle, '$client'>): Promise<void> {
+  private async deleteCondNodeWithChildren(condId: number, tx: Database): Promise<void> {
     try {
       const { column, aliasedTable } = this.#virtualTableDanTreeAlias('c')
       await tx
@@ -1021,7 +1068,7 @@ function transformCond(condNode: CondNode): Cond {
         cond: children.map(transformCond),
       }
 
-    case OP.NOT:{
+    case OP.NOT: {
       if (children.length !== 1) {
         throw new Error('\'not\' operator must have exactly one child')
       }
