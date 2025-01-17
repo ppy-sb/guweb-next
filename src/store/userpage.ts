@@ -1,6 +1,7 @@
 import type { inferRouterError, inferRouterOutputs } from '@trpc/server'
 import { defineStore } from 'pinia'
 import type { WatchStopHandle } from 'vue'
+
 import type { LeaderboardRankingSystem } from '../def/common'
 import type { RouteLocationRaw } from '#vue-router'
 import { type SwitcherPropType } from '~/composables/useSwitcher'
@@ -32,6 +33,12 @@ export default defineStore('userpage', () => {
 
   const currentRankingSystem = shallowRef<ReturnType<typeof _computeRankingSystem> | null>(null)
 
+  const dan = reactive({
+    visible: true,
+    count: 0,
+    neverShow: useCookie('experimental:dan-ad-no-show', { default: () => false }),
+  })
+
   let dispose: WatchStopHandle[] = []
 
   async function init(_initSwitcher: SwitcherPropType<LeaderboardRankingSystem>) {
@@ -43,6 +50,8 @@ export default defineStore('userpage', () => {
         handle: `${route.params.handle}`,
       })
       user.value = u
+
+      dan.count = await app.$client.dan.userClearedScores.count.query({ id: user.value!.id })
 
       setSwitcher(_initSwitcher || u.preferredMode)
       currentStatistic.value = _computeStatistic()
@@ -107,6 +116,7 @@ export default defineStore('userpage', () => {
     setSwitcher,
     currentStatistic,
     currentRankingSystem,
+    dan,
   }
 })
 

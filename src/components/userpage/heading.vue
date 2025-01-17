@@ -206,7 +206,7 @@ de-DE:
           <app-mode-switcher :model-value="page.switcher" class="self-start" @update:model-value="page.setSwitcher" />
         </div>
         <div class="self-center order-1 md:order-2 lg:order-1 md:self-start">
-          <h1 class="pb-1 username" :class="useUserRoleColor(page.user)">
+          <h1 class="pb-2 username" :class="useUserRoleColor(page.user)">
             {{ page.user.name }}
           </h1>
           <nuxt-link-locale :to="{ name: 'user-handle', params: { handle: `@${page.user.safeName}` } }" class="g-link">
