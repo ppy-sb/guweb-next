@@ -1,4 +1,4 @@
-import { type InferInsertModel, aliasedTable, and, asc, count, desc, eq, exists, getTableName, inArray, like, or, sql } from 'drizzle-orm'
+import { type InferInsertModel, aliasedTable, and, asc, count, desc, eq, exists, getTableName, gt, inArray, like, not, or, sql } from 'drizzle-orm'
 import { type MySql2Database } from 'drizzle-orm/mysql2'
 import { danSQLChunks } from '../../utils/sql-dan'
 import { type Id, type ScoreId, hasRuleset } from '../..'
@@ -745,6 +745,14 @@ export class DanProvider extends Base<Id, ScoreId> {
       }
 
       const types: InferInsertModel<typeof schema.requirementCondBindings>[] = []
+
+      // 2.5. delete obsolete requirement cleared scores
+      await tx
+        .delete(schema.requirementClearedScores)
+        .where(
+          eq(schema.requirementClearedScores.dan, id)
+        )
+
       // 3. Save new conditions and their tree structures
       for (const r of i.requirements) {
         // Validate the condition
@@ -776,11 +784,53 @@ export class DanProvider extends Base<Id, ScoreId> {
         })
 
       // 5. Return the updated dan object
-      return await this.get(id, tx)
+      const newDan = await this.get(id, tx)
+
+      // 5.1 background job run cond and save scores
+      this.runCondAndSaveScores(newDan, tx)
+
+      return newDan
     }).catch((e) => {
       console.error(e)
       throw e
     })
+  }
+
+  async runCondAndSaveScores(newDan: DatabaseDan<Id, DatabaseRequirementCondBinding<Id, Requirement, Cond>>, tx: Database = this.drizzle) {
+    const clearedScores: { scoreId: ScoreId; dan: number; requirement: Requirement }[] = []
+    for (const requirement of newDan.requirements) {
+      const res = await tx.select({
+        scoreId: this.tbl.scores.id,
+      })
+        .from(this.tbl.scores)
+        .innerJoin(this.tbl.beatmaps, eq(this.tbl.scores.mapMd5, this.tbl.beatmaps.md5))
+        .innerJoin(this.tbl.users, eq(this.tbl.scores.userId, this.tbl.users.id))
+        .where(
+          and(
+            gt(this.tbl.scores.status, BanchoPyScoreStatus.DNF),
+            danSQLChunks(requirement.cond, newDan.requirements, this.tbl),
+            not(
+              inArray(
+                this.tbl.scores.id,
+                this.drizzle
+                  .select({ id: schema.requirementClearedScores.scoreId })
+                  .from(schema.requirementClearedScores)
+              )
+            )
+          )
+        )
+      clearedScores.push(...res.map(item => ({
+        scoreId: item.scoreId,
+        dan: newDan.id,
+        requirement: requirement.type,
+      })))
+    }
+
+    if (!clearedScores.length) {
+      return
+    }
+
+    await tx.insert(schema.requirementClearedScores).values(clearedScores)
   }
 
   private async saveCondTree(
