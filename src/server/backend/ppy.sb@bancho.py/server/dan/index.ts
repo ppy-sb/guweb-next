@@ -464,7 +464,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage?: number }): Promise<Array<Base.UserDanClearedScore<Id, ScoreId>>> {
+  userClearedScoresQuery(opt: { user: { id: Id } }) {
     // derived tables
     const s1 = aliasedTable(schema.scores, 's1')
 
@@ -475,7 +475,7 @@ export class DanProvider extends Base<Id, ScoreId> {
       .from(s1)
       .as('sq')
 
-    const res = await this.drizzle.select({
+    return this.drizzle.select({
       dan: {
         id: schema.dans.id,
         name: schema.dans.name,
@@ -519,14 +519,30 @@ export class DanProvider extends Base<Id, ScoreId> {
       .innerJoin(sq, eq(schema.requirementClearedScores.scoreId, sq.id))
       .innerJoin(schema.beatmaps, eq(sq.mapMd5, schema.beatmaps.md5))
       .groupBy(schema.dans.id, sq.id)
-      .orderBy(
-        desc(schema.beatmaps.diff),
-        desc(count(schema.requirementCondBindings.type)),
-      )
       .where(and(
         eq(sq.userId, opt.user.id),
         eq(sq.rn, 1),
       ))
+  }
+
+  async countUserClearedDans(opt: { user: Pick<UserCompact<number>, 'id'> }): Promise<number> {
+    return this.drizzle.$count(
+      this.drizzle
+        .selectDistinct({ dan: schema.requirementClearedScores.dan })
+        .from(schema.requirementClearedScores)
+        .innerJoin(schema.scores, eq(schema.requirementClearedScores.scoreId, schema.scores.id))
+        .where(
+          eq(schema.scores.userId, opt.user.id)
+        ).as('c')
+    )
+  }
+
+  async getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage?: number }): Promise<Array<Base.UserDanClearedScore<Id, ScoreId>>> {
+    const res = await this.userClearedScoresQuery(opt)
+      .orderBy(
+        desc(schema.beatmaps.diff),
+        desc(count(schema.requirementCondBindings.type)),
+      )
 
     return res.map((i) => {
       const [mode, ruleset] = fromBanchoPyMode(i.score.mode)

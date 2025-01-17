@@ -7,7 +7,7 @@ const tRequirement = localeKey.root.dan.requirement
 
 const app = useNuxtApp()
 const { t } = useI18n()
-const route = useRoute('dan-id-detail')
+const route = useRoute('dan-detail-id')
 const session = useSession()
 
 const item = await app.$client.dan.get.query(route.params.id)
