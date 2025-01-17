@@ -4,6 +4,7 @@ import { type DanProvider } from '..'
 import { danSQLChunks } from '../../../utils/sql-dan'
 import * as schema from '../../../drizzle/schema'
 import { type ScoreId } from '../../../'
+import { BanchoPyScoreStatus } from '../../../../bancho.py/enums'
 import { CacheSyncedDanProcessor } from './$sync'
 import { type Requirement } from '~/def/dan'
 
@@ -72,6 +73,7 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
               .where(
                 and(
                   gt(this.dp.tbl.scores.id, this.lastProcessed),
+                  gt(this.dp.tbl.scores.status, BanchoPyScoreStatus.DNF),
                   danSQLChunks(requirement.cond, dan.requirements, this.dp.tbl),
                   not(
                     inArray(
@@ -101,7 +103,9 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
         return
       }
       this.logger.info(`saving ${results.length} new requirement cleared scores`)
-      await tx.insert(schema.requirementClearedScores).values(results)
+      await tx.insert(schema.requirementClearedScores).values(results).onDuplicateKeyUpdate({
+        set: {},
+      })
     })
   }
 
