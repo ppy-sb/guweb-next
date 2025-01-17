@@ -8,15 +8,46 @@ const tRequirement = localeKey.root.dan.requirement
 const { t, locale } = useI18n()
 
 const app = useNuxtApp()
+const route = useRoute()
 
-const kw = ref('')
-const qUser = await app.$client.search.searchUser.useQuery(() => ({ keyword: kw.value }), { lazy: true })
+const kw = ref(route.query.id?.toString() ?? '')
+const qUser = await app.$client.search.searchUser.useQuery(() => ({ keyword: kw.value }), { lazy: true, default: () => ref([]) as any })
 
-const userId = ref('')
-const { data, refresh, status } = await app.$client.dan.userClearedScores.useQuery(
-  () => ({ id: userId.value }),
-  { immediate: false, default: () => ref([]) as any }
+const userId = ref(route.query.id?.toString() ?? '')
+// const pagination = ref({
+//   page: 0,
+//   perPage: 10,
+// })
+const { data, refresh, status } = await useAsyncData(
+  async () => {
+    if (!userId.value) {
+      return {
+        count: 0,
+        data: [],
+      }
+    }
+    const v = await app.$client.dan.userClearedScores.list.query({ id: userId.value })
+    const c = await app.$client.dan.userClearedScores.count.query({ id: userId.value })
+    return {
+      total: c,
+      data: v,
+    }
+  },
 )
+
+watch(qUser.data, (val) => {
+  if (val?.length === 1) {
+    userId.value = val[0].id
+  }
+  else {
+    userId.value = ''
+  }
+})
+watch(userId, () => {
+  refresh()
+})
+
+const selectedUser = computed(() => qUser.data.value?.find(u => u.id === userId.value))
 
 // Helper function to format dates
 function formatDate(dateString: Date) {
@@ -33,19 +64,38 @@ function formatDate(dateString: Date) {
 
 <template>
   <div class="container max-w-screen-lg p-4 mx-auto custom-container">
+    <div role="alert" class="alert mb-4">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        class="h-6 w-6 shrink-0 stroke-current"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <span>WIP preview.</span>
+    </div>
     <!-- User Input Form -->
-    <form action="#" class="flex flex-col items-center gap-4 mb-8 sm:flex-row" @submit.prevent="() => refresh()">
+    <form action="#" class="flex flex-col items-center gap-4 mb-4 sm:flex-row" @submit.prevent="() => refresh()">
       <div class="w-full form-control sm:w-auto">
         <input
           v-model="kw"
           type="text"
-          placeholder="Enter user ID or name"
+          placeholder="Search user ID or name"
           class="w-full input input-bordered"
           required
         >
       </div>
       <div class="w-full form-control sm:w-auto">
         <select id="user" v-model="userId" class="select" name="user">
+          <option value="" disabled>
+            Select User
+          </option>
           <option v-for="user in qUser.data.value" :key="user.id" :value="user.id">
             {{ user.name }}
           </option>
@@ -55,6 +105,25 @@ function formatDate(dateString: Date) {
         Refresh
       </button>
     </form>
+
+    <div v-if="selectedUser" class="flex items-center space-x-3 mb-2">
+      <div class="avatar">
+        <div class="w-12 h-12 mask mask-squircle">
+          <img :src="selectedUser.avatarSrc" alt="avatar">
+        </div>
+      </div>
+      <div>
+        <nuxt-link-locale
+          class="font-bold whitespace-nowrap"
+          :to="{ name: 'user-handle', params: { handle: `@${selectedUser.safeName}` } }"
+        >
+          {{ selectedUser.name }}
+        </nuxt-link-locale>
+        <div v-if="data" class="text-gray-500 text-sm whitespace-nowrap">
+          <span class="font-bold">{{ data.total }}</span> dans achieved.
+        </div>
+      </div>
+    </div>
 
     <!-- Loading State -->
     <div v-if="status === 'pending'" class="flex justify-center">
@@ -71,10 +140,15 @@ function formatDate(dateString: Date) {
       </div>
     </div>
 
+    <!-- No Data State -->
+    <div v-if="!userId" class="text-center text-gray-500">
+      Please select a user.
+    </div>
+
     <!-- Data Display -->
-    <div v-if="data && data.length" class="space-y-6">
+    <div v-else-if="data?.data.length" class="space-y-4">
       <div
-        v-for="item in data"
+        v-for="item in data.data"
         :key="item.score.id.toString()"
         class="flex flex-col p-4 transition-shadow duration-200 bg-white rounded-lg shadow-sm dark:bg-base-200 sm:flex-row hover:shadow"
       >
@@ -82,7 +156,7 @@ function formatDate(dateString: Date) {
         <div class="flex-1">
           <!-- Dan Name and Requirements -->
           <div>
-            <nuxt-link-locale :to="{ name: 'dan-id-detail', params: { id: item.dan.id } }">
+            <nuxt-link-locale :to="{ name: 'dan-detail-id', params: { id: item.dan.id } }">
               <h2 class="mb-2 text-xl font-semibold text-gray-800 dark:text-gray-200 link">
                 {{ item.dan.name }}
               </h2>
@@ -90,7 +164,7 @@ function formatDate(dateString: Date) {
             <p class="text-sm text-gray-500">
               Qualified:
             </p>
-            <ul class="mb-2 text-gray-700 list-disc list-inside dark:text-gray-300">
+            <ul class="mb-2 text-gray-700 list-inside list-decimal dark:text-gray-300">
               <li v-for="req in item.requirements" :key="item.score.id.toString() + req">
                 {{ t(tRequirement[req].__path__) }}
               </li>
@@ -113,7 +187,7 @@ function formatDate(dateString: Date) {
               :src="item.score.beatmap.beatmapset.assets.list"
               :srcset="`${item.score.beatmap.beatmapset.assets.list} 1x, ${item.score.beatmap.beatmapset.assets['list@2x']} 2x`"
               :alt="autoLocale(item.score.beatmap.beatmapset.meta).title"
-              class="hidden object-cover h-40 border rounded dark:border-base-300 md:block"
+              class="hidden object-cover h-32 aspect-square border rounded dark:border-base-300 md:block"
               loading="lazy"
               :onerror="placeholder"
             >
@@ -125,7 +199,7 @@ function formatDate(dateString: Date) {
               loading="lazy"
               :onerror="placeholder"
             >
-            <div>
+            <div class="grow">
               <!-- Beatmap Information -->
               <div class="flex items-center">
                 <nuxt-link-locale
@@ -145,7 +219,7 @@ function formatDate(dateString: Date) {
               </div>
               <!-- Score Details -->
               <div class="mt-4">
-                <div class="grid grid-flow-col grid-rows-5 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <div class="grid grid-flow-col grid-rows-6 md:grid-rows-3 gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <div>
                     <span class="font-semibold">ID:</span> <nuxt-link-locale class="link" :to="{ name: 'score-id', params: { id: item.score.id } }">
                       {{ item.score.id }}
@@ -153,8 +227,8 @@ function formatDate(dateString: Date) {
                   </div>
                   <div><span class="font-semibold">Mode:</span> {{ item.score.mode }}</div>
                   <div><span class="font-semibold">Ruleset:</span> {{ item.score.ruleset }}</div>
-                  <div><span class="font-semibold">Accuracy:</span> {{ item.score.accuracy }}%</div>
                   <div><span class="font-semibold">Score:</span> {{ item.score.score }}</div>
+                  <div><span class="font-semibold">Accuracy:</span> {{ item.score.accuracy }}%</div>
                   <!-- <div><span class="font-semibold">PP:</span> {{ item.score.pp }}</div> -->
                   <div><span class="font-semibold">Max Combo:</span> {{ item.score.maxCombo }}</div>
                   <div><span class="font-semibold">Grade:</span> {{ item.score.grade }}</div>
@@ -169,7 +243,7 @@ function formatDate(dateString: Date) {
     </div>
 
     <!-- No Data State -->
-    <div v-if="data && !data.length" class="text-center text-gray-500">
+    <div v-else class="text-center text-gray-500">
       No cleared dans found for this user.
     </div>
   </div>

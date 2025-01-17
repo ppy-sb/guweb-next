@@ -109,34 +109,46 @@ export const router = _router({
       })
     }),
 
-  userClearedScores: withFeatureFlag(publicProcedure, Feature.Dan)
-    .input(object({
-      id: string(),
-      page: number().min(0).max(5).default(0),
-      perPage: number().min(1).max(10).default(10),
-    })).query(async ({ input }) => {
-      const data = await dans.getUserClearedDans({
-        user: { id: DanProvider.stringToId(input.id) },
-        page: input.page,
-        perPage: input.perPage,
-      })
+  userClearedScores: _router({
+    count: withFeatureFlag(publicProcedure, Feature.Dan)
+      .input(object({
+        id: string(),
+      })).query(async ({ input }) => {
+        const data = await dans.countUserClearedDans({
+          user: { id: DanProvider.stringToId(input.id) },
+        })
 
-      return data.map((item) => {
-        return {
-          ...item,
-          dan: mapId(item.dan, DanProvider.idToString),
-          score: {
-            ...item.score,
-            id: ScoreProvider.scoreIdToString(item.score.id),
-            beatmap: {
-              ...item.score.beatmap,
-              id: DanProvider.idToString(item.score.beatmap.id),
-              beatmapset: mapId(item.score.beatmap.beatmapset, DanProvider.idToString),
+        return data
+      }),
+    list: withFeatureFlag(publicProcedure, Feature.Dan)
+      .input(object({
+        id: string(),
+        page: number().min(0).max(5).default(0),
+        perPage: number().min(1).max(10).default(10),
+      })).query(async ({ input }) => {
+        const data = await dans.getUserClearedDans({
+          user: { id: DanProvider.stringToId(input.id) },
+          page: input.page,
+          perPage: input.perPage,
+        })
+
+        return data.map((item) => {
+          return {
+            ...item,
+            dan: mapId(item.dan, DanProvider.idToString),
+            score: {
+              ...item.score,
+              id: ScoreProvider.scoreIdToString(item.score.id),
+              beatmap: {
+                ...item.score.beatmap,
+                id: DanProvider.idToString(item.score.beatmap.id),
+                beatmapset: mapId(item.score.beatmap.beatmapset, DanProvider.idToString),
+              },
             },
-          },
-        }
-      }) satisfies BaseDanProvider.UserDanClearedScore<string, string>[]
-    }),
+          }
+        }) satisfies BaseDanProvider.UserDanClearedScore<string, string>[]
+      }),
+  }),
 
   exportAll: withFeatureFlag(staffProcedure, Feature.Dan)
     .query(async () => {
