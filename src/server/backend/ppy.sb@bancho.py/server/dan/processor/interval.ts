@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { and, eq, gt, inArray, not } from 'drizzle-orm'
+import { and, eq, gt, inArray, not, sql } from 'drizzle-orm'
 import { type DanProvider } from '..'
 import { danSQLChunks } from '../../../utils/sql-dan'
 import * as schema from '../../../drizzle/schema'
@@ -35,30 +35,41 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
     })
     this.lastProcessed = lastProcessed?.scoreId ?? 0n
 
-    let finished = true
-    const _job = async () => {
-      if (finished) {
-        finished = false
-        await this.job()
-        finished = true
-      }
-      else {
-        this.logger.debug('interval job already in progress, skipping')
+    let wrappedJob
+    {
+      let finished = true
+      wrappedJob = async () => {
+        if (finished) {
+          finished = false
+          try {
+            await this.job()
+          }
+          catch (e) {
+            this.logger.error(e)
+          }
+          finally {
+            finished = true
+          }
+        }
+        else {
+          this.logger.debug('interval job already in progress, skipping')
+        }
       }
     }
-    _job()
-    this.interval = setInterval(_job, this.config.interval)
+
+    wrappedJob()
+    this.interval = setInterval(wrappedJob, this.config.interval)
   }
 
   async job() {
-    this.logger.debug('checking for new requirement cleared scores')
     await this.dp.drizzle.transaction(async (tx) => {
       // skip if no new scores
       const latest = await this.getLatestScoreId(tx)
-      if ((latest || this.lastProcessed) <= this.lastProcessed) {
-        this.logger.debug('no new scores found')
+      if (undefined === latest || latest <= this.lastProcessed) {
         return
       }
+
+      this.logger.debug('processing requirement cleared scores where score id >', latest)
 
       const results: { scoreId: ScoreId; dan: number; requirement: Requirement }[] = []
       for (const [_, dan] of this.dans) {
@@ -103,9 +114,15 @@ export class IntervalDanProcessor extends CacheSyncedDanProcessor implements Cac
         return
       }
       this.logger.info(`saving ${results.length} new requirement cleared scores`)
-      await tx.insert(schema.requirementClearedScores).values(results).onDuplicateKeyUpdate({
-        set: {},
-      })
+      await tx.insert(schema.requirementClearedScores)
+        .values(results)
+        .onDuplicateKeyUpdate({
+          set: {
+            dan: sql`dan`,
+            requirement: sql`requirement`,
+            scoreId: sql`score_id`,
+          },
+        })
     })
   }
 
