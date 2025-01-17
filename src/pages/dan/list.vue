@@ -131,7 +131,7 @@ zh-CN:
             <div class="space-x-2">
               <nuxt-link-locale
                 :to="{
-                  name: 'dan-id-detail',
+                  name: 'dan-detail-id',
                   params: {
                     id: item.id,
                   },
