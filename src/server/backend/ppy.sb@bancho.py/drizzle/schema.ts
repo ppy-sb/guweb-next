@@ -94,7 +94,14 @@ export const danConds = mysqlTable('sb_dan_conds', {
   type: mysqlEnum('type', Object.values(OP) as OPTuple).notNull(),
   value: varchar('value', { length: 128 }).notNull(),
   parent: int('parent'),
-})
+}, tbl => [
+  foreignKey({
+    columns: [tbl.parent],
+    foreignColumns: [tbl.id],
+  })
+    .onUpdate('cascade')
+    .onDelete('cascade'),
+])
 
 export const requirementCondBindings = mysqlTable('sb_requirement_cond_bindings', {
   danId: int('dan').notNull().references(() => dans.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
