@@ -11,14 +11,19 @@ import { type PaginatedResult } from '~/def/pagination'
 
 export const router = _router({
   search: publicProcedure
-    .input(object({
-      keyword: string(),
-      mode: zodMode.optional(),
-      ruleset: zodRuleset.optional(),
-      rulesetDefaultsToStandard: boolean().optional().default(false),
-      page: number().min(0).max(5).default(0),
-      perPage: number().min(1).max(10).default(10),
-    }))
+    .input(
+      object({
+        keyword: string(),
+        rulesetDefaultsToStandard: boolean().optional().default(false),
+        mode: zodMode.optional(),
+        ruleset: zodRuleset.optional(),
+        page: number().int().min(0).max(5).default(0),
+        perPage: number().int().min(1).max(10).default(10),
+        mania: object({
+          keyCount: number().int().min(2).max(8).optional(),
+        }).default(() => ({})),
+      })
+    )
     .query(async ({ input }) => {
       const searchResult = await dans.search(input)
       return {
@@ -113,8 +118,14 @@ export const router = _router({
     count: withFeatureFlag(publicProcedure, Feature.Dan)
       .input(object({
         id: string(),
+        mode: zodMode.optional(),
+        ruleset: zodRuleset.optional(),
+        mania: object({
+          keyCount: number().int().min(2).max(8).optional(),
+        }).default(() => ({})),
       })).query(async ({ input }) => {
         const data = await dans.countUserClearedDans({
+          ...input,
           user: { id: DanProvider.stringToId(input.id) },
         })
 
@@ -125,11 +136,15 @@ export const router = _router({
         id: string(),
         page: number().min(0).max(5).default(0),
         perPage: number().min(1).max(10).default(10),
+        mode: zodMode.optional(),
+        ruleset: zodRuleset.optional(),
+        mania: object({
+          keyCount: number().int().min(2).max(8).optional(),
+        }).default(() => ({})),
       })).query(async ({ input }) => {
         const data = await dans.getUserClearedDans({
+          ...input,
           user: { id: DanProvider.stringToId(input.id) },
-          page: input.page,
-          perPage: input.perPage,
         })
 
         return data.map((item) => {

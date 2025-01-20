@@ -19,7 +19,7 @@ import { type MailTokenProvider } from '$base/server'
 import type { ArticleProvider } from '$base/server/article'
 import { LeaderboardScoreRank, Mode, PPRank, Relationship, Ruleset, ScoreRank } from '~/def'
 import { RankingStatus } from '~/def/beatmap'
-import type { ActiveMode, ActiveRuleset } from '~/def/common'
+import { type UnionModeRuleset } from '~/def/server'
 
 export const zodHandle = string().trim().transform(v => decodeURIComponent(v))
 export const zodRelationType = nativeEnum(Relationship)
@@ -32,20 +32,11 @@ export const zodScoreRankingSystem = nativeEnum(LeaderboardScoreRank)
 export const zodLeaderboardRankingSystem = zodPPRankingSystem.or(zodScoreRankingSystem)
 export const zodRankingSystem = zodPPRankingSystem.or(nativeEnum(ScoreRank))
 
-export const zodSafeModeRulesetBase = object({
+export const zodSafeModeRuleset = object({
   mode: zodMode,
   ruleset: zodRuleset,
 })
-
-export function validateModeRuleset({
-  mode,
-  ruleset,
-}: {
-  mode: ActiveMode
-  ruleset: ActiveRuleset
-}) {
-  return hasRuleset(mode, ruleset)
-}
+  .refine((v): v is UnionModeRuleset => hasRuleset(v.mode, v.ruleset))
 
 export const zodTipTapJSONContent = record(string(), any())
   .superRefine((input, ctx): input is ArticleProvider.JSONContent => {

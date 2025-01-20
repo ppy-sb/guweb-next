@@ -44,15 +44,33 @@ export namespace DanProvider {
     dan: Pick<DatabaseDan<Id>, 'id' | 'name'>
     requirements: Requirement[]
   }
+
+  export interface SearchParam {
+    page: number
+    perPage: number
+    keyword: string
+    rulesetDefaultsToStandard?: boolean
+    mode?: Mode
+    ruleset?: Ruleset
+    mania?: { keyCount?: number }
+  }
+
+  export interface ModeRulesetSelector {
+    mode?: Mode
+    ruleset?: Ruleset
+    mania?: { keyCount?: number }
+  }
+
 }
+
 export abstract class DanProvider<Id, ScoreId> extends Mixin(IdTransformable, ScoreIdTransformable) {
-  abstract search(opt: { keyword: string; mode?: Mode; ruleset?: Ruleset; rulesetDefaultsToStandard?: boolean } & Pagination): Promise<PaginatedResult<DatabaseDan<Id>>>
+  abstract search(opt: DanProvider.SearchParam): Promise<PaginatedResult<DatabaseDan<Id>>>
   abstract get(id: Id): Promise<DatabaseDan<Id>>
   abstract delete(id: Id): Promise<void>
   abstract getQualifiedScores(id: Id, requirement: Requirement, page: number, perPage: number): Promise<DanProvider.RequirementQualifiedScore<Id, ScoreId>>
   abstract runCustomDan(opt: Dan): Promise<Array<DanProvider.RequirementQualifiedScore<Id, ScoreId>>>
   abstract saveComposed(i: Dan | DatabaseDan<Id>, user: Pick<UserCompact<Id>, 'id'>): Promise<DatabaseDan<Id>>
-  abstract countUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'> }): Promise<number>
-  abstract getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage: number }): Promise<Array<DanProvider.UserDanClearedScore<Id, ScoreId>>>
+  abstract countUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'> } & DanProvider.ModeRulesetSelector): Promise<number>
+  abstract getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage: number } & DanProvider.ModeRulesetSelector): Promise<Array<DanProvider.UserDanClearedScore<Id, ScoreId>>>
   abstract exportAll(): Promise<DatabaseDan<Id>[]>
 }
