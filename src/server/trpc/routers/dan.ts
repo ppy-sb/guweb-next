@@ -17,10 +17,10 @@ export const router = _router({
         rulesetDefaultsToStandard: boolean().optional().default(false),
         mode: zodMode.optional(),
         ruleset: zodRuleset.optional(),
-        page: number().int().min(0).max(5).default(0),
+        page: number().int().min(0).default(0),
         perPage: number().int().min(1).max(10).default(10),
         mania: object({
-          keyCount: number().int().min(2).max(8).optional(),
+          keyCount: number().int().min(2).max(10).optional(),
         }).default(() => ({})),
       })
     )
@@ -98,7 +98,7 @@ export const router = _router({
     .input(object({
       id: string(),
       requirement: nativeEnum(Requirement),
-      page: number().min(0).max(5).default(0),
+      page: number().min(0).default(0),
       perPage: number().min(1).max(10).default(10),
     })).query(async ({ input }) => {
       const result = await dans.getQualifiedScores(DanProvider.stringToId(input.id), input.requirement, input.page, input.perPage)
@@ -121,7 +121,7 @@ export const router = _router({
         mode: zodMode.optional(),
         ruleset: zodRuleset.optional(),
         mania: object({
-          keyCount: number().int().min(2).max(8).optional(),
+          keyCount: number().int().min(2).max(10).optional(),
         }).default(() => ({})),
       })).query(async ({ input }) => {
         const data = await dans.countUserClearedDans({
