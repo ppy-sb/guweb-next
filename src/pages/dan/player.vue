@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Mode, Ruleset } from '~/def'
 import { useNuxtApp } from '#app'
 
 // Constants and Localization
 const tRequirement = localeKey.root.dan.requirement
 const { t, locale } = useI18n()
 
+const tMode = localeKey.root.mode
+const tRule = localeKey.root.ruleset
+
 const app = useNuxtApp()
+const server = useAdapterConfig()
 const route = useRoute()
 
 const kw = ref(route.query.id?.toString() ?? '')
 const qUser = await app.$client.search.searchUser.useQuery(() => ({ keyword: kw.value }), { lazy: true, default: () => ref([]) as any })
+const query = ref({
+  // page: 0,
+  // perPage: 10,
+  mode: undefined as Mode | undefined,
+  ruleset: undefined as Ruleset | undefined,
+  mania: {
+    keyCount: undefined as number | undefined,
+  },
+})
 
 const userId = ref(route.query.id?.toString() ?? '')
 // const pagination = ref({
@@ -26,8 +39,8 @@ const { data, refresh, status } = await useAsyncData(
         data: [],
       }
     }
-    const v = await app.$client.dan.userClearedScores.list.query({ id: userId.value })
-    const c = await app.$client.dan.userClearedScores.count.query({ id: userId.value })
+    const v = await app.$client.dan.userClearedScores.list.query({ id: userId.value, ...query.value })
+    const c = await app.$client.dan.userClearedScores.count.query({ id: userId.value, ...query.value })
     return {
       total: c,
       data: v,
@@ -62,6 +75,25 @@ function formatDate(dateString: Date) {
 }
 </script>
 
+<i18n lang="yaml">
+en-GB:
+  qf-scores: Qualified Scores (best 10)
+  load-qualified-scores: load qualified scores
+  mode: Mode...
+  ruleset: Rule...
+  unset: Unset
+  key: Key
+
+zh-CN:
+  qf-scores: 满足条件的成绩 (前 10)
+  load-qualified-scores: 加载满足条件的成绩
+  mode: 模式
+  ruleset: 玩法
+  unset: 未指定
+  treat-no-ruleset-cond-as-standard: 将无玩法要求的段位视为std端位
+  key: 键数
+</i18n>
+
 <template>
   <div class="container max-w-screen-lg p-4 mx-auto custom-container">
     <div role="alert" class="alert mb-4">
@@ -82,24 +114,66 @@ function formatDate(dateString: Date) {
     </div>
     <!-- User Input Form -->
     <form action="#" class="flex flex-col items-center gap-4 mb-4 sm:flex-row" @submit.prevent="() => refresh()">
-      <div class="w-full form-control sm:w-auto">
-        <input
-          v-model="kw"
-          type="text"
-          placeholder="Search user ID or name"
-          class="w-full input input-bordered"
-          required
-        >
-      </div>
-      <div class="w-full form-control sm:w-auto">
-        <select id="user" v-model="userId" class="select" name="user">
-          <option value="" disabled>
-            Select User
-          </option>
-          <option v-for="user in qUser.data.value" :key="user.id" :value="user.id">
-            {{ user.name }}
-          </option>
-        </select>
+      <div class="grid grid-cols-4 pb-2 space-x-2 gap-y-2 lg:grid-cols-12 items-end">
+        <div class="form-control col-span-2">
+          <input
+            v-model="kw"
+            type="text"
+            placeholder="Search user ID or name"
+            class="w-full input input-bordered"
+            required
+          >
+        </div>
+        <div class="form-control col-span-2">
+          <select id="user" v-model="userId" class="select" name="user">
+            <option value="" disabled>
+              Select User
+            </option>
+            <option v-for="user in qUser.data.value" :key="user.id" :value="user.id">
+              {{ user.name }}
+            </option>
+          </select>
+        </div>
+        <div class="col-span-12" />
+        <div class="col-span-2 form-control">
+          <div class="label">
+            <span class="label-text">{{ t('mode') }}</span>
+          </div>
+          <select id="" v-model="query.mode" name="mode" class="select select-bordered" @change="() => refresh()">
+            <option :value="undefined">
+              {{ t('unset') }}
+            </option>
+            <option v-for="mode in Object.values(Mode)" :key="mode" :value="mode">
+              {{ t(tMode[mode].__path__) }}
+            </option>
+          </select>
+        </div>
+        <div class="col-span-2 form-control">
+          <div class="label">
+            <span class="label-text">{{ t('ruleset') }}</span>
+          </div>
+          <select id="" v-model="query.ruleset" name="ruleset" class="select select-bordered" @change="() => refresh()">
+            <option :value="undefined">
+              {{ t('unset') }}
+            </option>
+            <option v-for="ruleset in Object.values(Ruleset)" :key="ruleset" :value="ruleset" :disabled="query.mode ? !server.hasRuleset(query.mode, ruleset) : false">
+              {{ t(tRule[ruleset].__path__) }}
+            </option>
+          </select>
+        </div>
+        <div v-show="query.mode === Mode.Mania" class="col-span-2 form-control">
+          <div class="label">
+            <span class="label-text">{{ t('key') }}</span>
+          </div>
+          <select id="" v-model="query.mania.keyCount" name="ruleset" class="select select-bordered" @change="() => refresh()">
+            <option :value="undefined">
+              {{ t('unset') }}
+            </option>
+            <option v-for="(_, keyCount) in 9" :key="keyCount" :value="keyCount + 2">
+              {{ keyCount + 2 }}K
+            </option>
+          </select>
+        </div>
       </div>
       <button type="submit" class="w-full btn btn-primary sm:w-auto">
         Refresh
