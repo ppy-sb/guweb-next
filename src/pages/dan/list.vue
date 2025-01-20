@@ -24,13 +24,22 @@ const query = ref({
 
 const { data, refresh, status } = await app.$client.dan.search.useQuery(query)
 
-async function update() {
+const pages = computed(() => Math.ceil((data.value?.total || 0) / (query.value.perPage)))
+
+async function validateAndRefresh() {
   // check ruleset
   if (query.value.mode && query.value.ruleset && !server.hasRuleset(query.value.mode, query.value.ruleset)) {
     query.value.ruleset = undefined
   }
 
+  query.value.page = 0
+
   await refresh()
+}
+
+function toPage(n: number) {
+  query.value.page = n
+  return refresh()
 }
 </script>
 
@@ -64,13 +73,13 @@ zh-CN:
 
 <template>
   <section class="container px-2 mx-auto custom-container">
-    <form :action="useRequestURL().href" method="get" @submit.prevent="update()">
+    <form :action="useRequestURL().href" method="get" @submit.prevent="validateAndRefresh()">
       <div class="grid grid-cols-4 pb-2 space-x-2 gap-y-2 lg:grid-cols-12">
         <div class="col-span-2 form-control">
           <div class="label">
             <span class="label-text">{{ t('mode') }}</span>
           </div>
-          <select id="" v-model="query.mode" name="mode" class="select select-bordered" @change="() => update()">
+          <select id="" v-model="query.mode" name="mode" class="select select-bordered" @change="() => validateAndRefresh()">
             <option :value="undefined">
               {{ t('unset') }}
             </option>
@@ -83,7 +92,7 @@ zh-CN:
           <div class="label">
             <span class="label-text">{{ t('ruleset') }}</span>
           </div>
-          <select id="" v-model="query.ruleset" name="ruleset" class="select select-bordered" @change="() => update()">
+          <select id="" v-model="query.ruleset" name="ruleset" class="select select-bordered" @change="() => validateAndRefresh()">
             <option :value="undefined">
               {{ t('unset') }}
             </option>
@@ -96,7 +105,7 @@ zh-CN:
           <div class="label">
             <span class="label-text">{{ t('key') }}</span>
           </div>
-          <select id="" v-model="query.mania.keyCount" name="ruleset" class="select select-bordered" @change="() => update()">
+          <select id="" v-model="query.mania.keyCount" name="ruleset" class="select select-bordered" @change="() => validateAndRefresh()">
             <option :value="undefined">
               {{ t('unset') }}
             </option>
@@ -108,7 +117,7 @@ zh-CN:
         <div class="justify-end col-span-6 md:col-span-4 form-control">
           <label class="justify-start gap-2 cursor-pointer label">
             <span class="label-text">{{ t('treat-no-ruleset-cond-as-standard') }}</span>
-            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle" @change="() => update()">
+            <input v-model="query.rulesetDefaultsToStandard" type="checkbox" class="toggle" @change="() => validateAndRefresh()">
           </label>
         </div>
       </div>
@@ -163,6 +172,40 @@ zh-CN:
               </nuxt-link-locale>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="flex pt-4">
+        <div class="mx-auto join">
+          <template v-for="(i, n) in pages" :key="`sw${i}`">
+            <button
+              v-if="n === 0" class="join-item btn"
+              :class="{
+                'btn-active': n === query.page,
+              }"
+              @click="toPage(n)"
+            >
+              {{ Math.abs(n - query.page) > 3 && '|&lt;' || '' }} {{ i }}
+            </button>
+            <button
+              v-else-if="Math.abs(n - query.page) <= 3"
+              class="join-item btn"
+              :class="{
+                'btn-active': n === query.page,
+              }"
+              @click="toPage(n)"
+            >
+              {{ i }}
+            </button>
+            <button
+              v-else-if="i === pages" class="join-item btn"
+              :class="{
+                'btn-active': n === query.page,
+              }"
+              @click="toPage(n)"
+            >
+              {{ i }} &gt;|
+            </button>
+          </template>
         </div>
       </div>
       <div
