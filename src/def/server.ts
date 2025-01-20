@@ -17,6 +17,10 @@ export type ServerRankingSystemDef = {
   }
 }
 
+export type UnionModeRuleset = {
+  [M in keyof ServerRankingSystemDef]: { mode: M; ruleset: AvailableRuleset<M> };
+}[keyof ServerRankingSystemDef]
+
 export type HasRuleset = <M extends ActiveMode>(
   mode: M,
   ruleset: ActiveRuleset
