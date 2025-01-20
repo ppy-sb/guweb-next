@@ -7,10 +7,12 @@ import { useDrizzle } from '../../../bancho.py/server/source/drizzle'
 import {
   fromBanchoMode,
   fromBanchoPyMode,
+  getModeAvailableRulesets,
   idToString,
   scoreIdToString,
   stringToId,
   stringToScoreId,
+  toBanchoPyMode,
   toBeatmapset,
   toMods,
   toScore,
@@ -179,14 +181,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  async search(a: {
-    keyword: string
-    mode?: Mode
-    ruleset?: Ruleset
-    page: number
-    perPage: number
-    rulesetDefaultsToStandard?: boolean
-  }): Promise<PaginatedResult<DatabaseDan<Id>>> {
+  async search(a: Base.SearchParam): Promise<PaginatedResult<DatabaseDan<Id>>> {
     return this.drizzle.transaction<PaginatedResult<DatabaseDan<Id>>>(async (tx) => {
       const dans = aliasedTable(schema.dans, 'd')
       const searchCondTree = this.#virtualTableDanTreeAlias('cond_tree')
@@ -374,6 +369,14 @@ export class DanProvider extends Base<Id, ScoreId> {
               )
               // Mania only supports standard ruleset so ruleset is not required
               ?.if(a.mode !== Mode.Mania),
+
+            // filter key count
+            (a.mode === Mode.Mania && a.mania?.keyCount)
+              ? or(
+                eq(bmId.cs, a.mania?.keyCount),
+                eq(bmMd5.cs, a.mania?.keyCount)
+              )
+              : undefined
           )
         )
         // .orderBy(
@@ -464,7 +467,7 @@ export class DanProvider extends Base<Id, ScoreId> {
     })
   }
 
-  userClearedScoresQuery(opt: { user: { id: Id } }) {
+  userClearedScoresQuery(opt: { user: { id: Id } } & Base.ModeRulesetSelector) {
     // derived tables
     const s1 = aliasedTable(schema.scores, 's1')
 
@@ -522,22 +525,46 @@ export class DanProvider extends Base<Id, ScoreId> {
       .where(and(
         eq(sq.userId, opt.user.id),
         eq(sq.rn, 1),
+
+        opt.mode
+          ? opt.ruleset
+            ? eq(sq.mode, toBanchoPyMode(opt.mode, opt.ruleset))
+            : inArray(sq.mode, getModeAvailableRulesets(opt.mode).map(v => toBanchoPyMode(opt.mode!, v)))
+          : undefined,
+
+        opt.mode === Mode.Mania && opt.mania?.keyCount
+          ? eq(schema.beatmaps.cs, opt.mania.keyCount)
+          : undefined
+
       ))
   }
 
-  async countUserClearedDans(opt: { user: Pick<UserCompact<number>, 'id'> }): Promise<number> {
+  async countUserClearedDans(opt: { user: Pick<UserCompact<number>, 'id'> } & Base.ModeRulesetSelector): Promise<number> {
     return this.drizzle.$count(
       this.drizzle
         .selectDistinct({ dan: schema.requirementClearedScores.dan })
         .from(schema.requirementClearedScores)
         .innerJoin(schema.scores, eq(schema.requirementClearedScores.scoreId, schema.scores.id))
+        .innerJoin(schema.beatmaps, eq(schema.scores.mapMd5, schema.beatmaps.md5))
         .where(
-          eq(schema.scores.userId, opt.user.id)
+          and(
+            eq(schema.scores.userId, opt.user.id),
+
+            opt.mode
+              ? opt.ruleset
+                ? eq(schema.scores.mode, toBanchoPyMode(opt.mode, opt.ruleset))
+                : inArray(schema.scores.mode, getModeAvailableRulesets(opt.mode).map(v => toBanchoPyMode(opt.mode!, v)))
+              : undefined,
+
+            opt.mode === Mode.Mania && opt.mania?.keyCount
+              ? eq(schema.beatmaps.cs, opt.mania.keyCount)
+              : undefined
+          )
         ).as('c')
     )
   }
 
-  async getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage?: number }): Promise<Array<Base.UserDanClearedScore<Id, ScoreId>>> {
+  async getUserClearedDans(opt: { user: Pick<UserCompact<Id>, 'id'>; page: number; perPage?: number } & Base.ModeRulesetSelector): Promise<Array<Base.UserDanClearedScore<Id, ScoreId>>> {
     const res = await this.userClearedScoresQuery(opt)
       .orderBy(
         desc(schema.beatmaps.diff),
