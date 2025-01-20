@@ -17,6 +17,9 @@ const query = ref({
   mode: undefined as Mode | undefined,
   ruleset: undefined as Ruleset | undefined,
   rulesetDefaultsToStandard: false,
+  mania: {
+    keyCount: undefined as number | undefined,
+  },
 })
 
 const { data, refresh, status } = await app.$client.dan.search.useQuery(query)
@@ -42,6 +45,7 @@ en-GB:
   ruleset: Rule...
   unset: Unset
   treat-no-ruleset-cond-as-standard: treat dans with no ruleset requirement as standard
+  key: Key count
 
 zh-CN:
   search-text: 搜索段位成就...
@@ -53,6 +57,7 @@ zh-CN:
   ruleset: 玩法
   unset: 未指定
   treat-no-ruleset-cond-as-standard: 将无玩法要求的段位视为std端位
+  key: 键数
 
 # TODO fr, DE
 </i18n>
@@ -60,7 +65,7 @@ zh-CN:
 <template>
   <section class="container px-2 mx-auto custom-container">
     <form :action="useRequestURL().href" method="get" @submit.prevent="update()">
-      <div class="grid grid-cols-4 pb-2 space-x-2 gap-y-2 md:grid-cols-4 lg:grid-cols-12">
+      <div class="grid grid-cols-4 pb-2 space-x-2 gap-y-2 lg:grid-cols-12">
         <div class="col-span-2 form-control">
           <div class="label">
             <span class="label-text">{{ t('mode') }}</span>
@@ -84,6 +89,19 @@ zh-CN:
             </option>
             <option v-for="ruleset in Object.values(Ruleset)" :key="ruleset" :value="ruleset" :disabled="query.mode ? !server.hasRuleset(query.mode, ruleset) : false">
               {{ t(tRule[ruleset].__path__) }}
+            </option>
+          </select>
+        </div>
+        <div v-show="query.mode === Mode.Mania" class="col-span-2 form-control">
+          <div class="label">
+            <span class="label-text">{{ t('key') }}</span>
+          </div>
+          <select id="" v-model="query.mania.keyCount" name="ruleset" class="select select-bordered" @change="() => update()">
+            <option :value="undefined">
+              {{ t('unset') }}
+            </option>
+            <option v-for="(_, keyCount) in 9" :key="keyCount" :value="keyCount + 2">
+              {{ keyCount + 2 }}K
             </option>
           </select>
         </div>
