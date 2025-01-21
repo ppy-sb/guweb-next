@@ -11,7 +11,7 @@ export const t = initTRPC.context<Context>().create({
   errorFormatter(opts) {
     const { shape, error } = opts
     const eData = {
-      ...(import.meta.dev ? shape.data : { code: shape.data.code }),
+      ...(import.meta.dev ? shape.data : { code: shape.data.code, httpStatus: shape.data.httpStatus }),
       zodError:
           (error.code === 'BAD_REQUEST' && error.cause instanceof ZodError)
             ? error.cause.flatten()
@@ -27,6 +27,7 @@ export const t = initTRPC.context<Context>().create({
       ...shape,
       // ...pick(shape, ['code', 'message']),
       data: eData,
+      statusCode: shape.data.httpStatus || shape.code,
     }
   },
 

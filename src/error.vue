@@ -1,9 +1,29 @@
 <script lang="ts" setup>
+import type { TRPCError } from '@trpc/server'
 import type { NuxtError } from 'nuxt/app'
 
-defineProps<{ error: NuxtError }>()
+const props = defineProps<{ error: NuxtError }>()
 const scrollY = useScrollYObserver()
 const { status } = useZoomModal()
+
+let maybeTRPCError: (TRPCError & { httpStatus: number }) | undefined
+// eslint-disable-next-line no-lone-blocks
+{
+  try {
+    maybeTRPCError = JSON.parse(props.error.data as string)
+  }
+  catch (e) {
+    maybeTRPCError = undefined
+  }
+}
+
+const code = maybeTRPCError?.httpStatus || props.error.statusCode
+const _status = maybeTRPCError?.code || props.error.statusMessage || props.error.message
+
+const event = useRequestEvent()
+if (event) {
+  setResponseStatus(event, code)
+}
 </script>
 
 <template>
@@ -26,9 +46,10 @@ const { status } = useZoomModal()
       "
     >
       <div v-if="error" class="container custom-container mx-auto pt-10">
-        <h1 class="text-4xl mb-4">
-          {{ error.statusCode }}
+        <h1 class="text-4xl">
+          {{ code }} {{ _status }}
         </h1>
+        <div class="divider" />
         <span class="text-2xl">
           {{ formatGucchoError(error) }}
         </span>
