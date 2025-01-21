@@ -12,6 +12,11 @@ const session = useSession()
 
 const item = await app.$client.dan.get.query(route.params.id)
 
+useHead({
+  title: `${item.name} - ${app.$i18n.t(localeKey.title.dans.__path__)}`,
+  titleTemplate: title => `${title} - ${app.$i18n.t(localeKey.server.name.__path__)}`,
+})
+
 const pagination = reactive({
   [Requirement.Pass]: {
     page: 0,
