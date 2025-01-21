@@ -10,6 +10,12 @@ const server = useAdapterConfig()
 const { t } = useI18n()
 const r = useRoute()
 const session = useSession()
+
+useHead({
+  title: app.$i18n.t(localeKey.title.dans.__path__),
+  titleTemplate: title => `${title} - ${app.$i18n.t(localeKey.server.name.__path__)}`,
+})
+
 const query = ref({
   keyword: r.query.s?.toString() ?? '',
   page: 0,
@@ -219,7 +225,3 @@ zh-CN:
     </div>
   </section>
 </template>
-
-<style scoped>
-
-</style>

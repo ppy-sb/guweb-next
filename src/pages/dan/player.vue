@@ -62,6 +62,11 @@ watch(userId, () => {
 
 const selectedUser = computed(() => qUser.data.value?.find(u => u.id === userId.value))
 
+useHead({
+  title: () => `${selectedUser.value?.name ? `${selectedUser.value.name} | ` : ''}${app.$i18n.t(localeKey.title.dans.__path__)}`,
+  titleTemplate: title => `${title} - ${app.$i18n.t(localeKey.server.name.__path__)}`,
+})
+
 // Helper function to format dates
 function formatDate(dateString: Date) {
   const options: Intl.DateTimeFormatOptions = {
