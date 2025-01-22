@@ -13,14 +13,14 @@ export const useChatStore = defineStore('chat', () => {
   async function onMessage(message: ChatProvider.IPrivateMessage<string>) {
     const room = message.from.id === session.userId ? message.to.id : message.from.id
 
-    const c = allMessages.get(room) || await initRoom(room)
+    const ctx = allMessages.get(room) || await initRoom(room)
 
-    if (c.messages.at(-1)?.id !== message.id) {
-      c.messages.push(message)
+    if (ctx.messages.at(-1)?.id !== message.id) {
+      ctx.messages.push(message)
     }
 
     const online = await $app.$client.user.webOnline.query({ id: room })
-    c.online = online
+    ctx.online = online
 
     if (message.read) {
       return
@@ -28,13 +28,34 @@ export const useChatStore = defineStore('chat', () => {
     if (message.from.id === session.userId) {
       return
     }
-    push(room, {
-      id: message.id,
-      message: message.content,
-      onClick() {
-        // messages.value.set(room, [])
-      },
-    })
+
+    await notifyUser(ctx, message)
+  }
+
+  async function notifyUser(ctx: Ctx, message: ChatProvider.IPrivateMessage<string>) {
+    const useNative = await notifyMethodSelector()
+    if (useNative) {
+      const msg = new Notification(ctx.name, {
+        body: message.content,
+        data: message,
+        tag: ctx.id,
+        // @ts-expect-error it has.
+        renotify: true,
+      })
+
+      msg.onclick = () => {
+        navigateTo({ name: 'chat', query: { id: ctx.id } })
+      }
+    }
+    else {
+      push(ctx.id, {
+        id: message.id,
+        message: message.content,
+        onClick() {
+          navigateTo({ name: 'chat', query: { id: ctx.id } })
+        },
+      })
+    }
   }
 
   async function listen(source: EventSource) {
@@ -56,6 +77,7 @@ export const useChatStore = defineStore('chat', () => {
     ]
 
     const _room = {
+      id: room,
       messages: msgs,
       ava: u?.avatarSrc || '',
       name: u?.name || room,
@@ -77,9 +99,36 @@ export const useChatStore = defineStore('chat', () => {
 })
 
 interface Ctx {
+  id: string
   messages: ChatProvider.IPrivateMessage<string>[]
   ava: string
   name: string
   description?: string
   online: boolean
+}
+
+async function notifyMethodSelector() {
+  if (!('Notification' in window)) {
+    // Check if the browser supports notifications
+    return false
+  }
+  else if (Notification.permission === 'granted') {
+    // Check whether notification permissions have already been granted;
+    // if so, create a notification
+    return true
+    // …
+  }
+  else if (Notification.permission !== 'denied') {
+    // We need to ask the user for permission
+    const permission = await Notification.requestPermission()
+    // If the user accepts, let's create a notification
+    if (permission === 'granted') {
+      return true
+      // …
+    }
+  }
+
+  // At last, if the user has denied notifications, and you
+  // want to be respectful there is no need to bother them anymore.
+  return false
 }

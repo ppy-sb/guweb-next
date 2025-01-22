@@ -21,8 +21,8 @@ export default function () {
       }
     },
     clear(ctx: string | number, msgId: string | number) {
-      const _ctx = messages.value.get(ctx)!
-      _ctx.splice(_ctx.findIndex(m => m.id === msgId), 1)
+      const _ctx = messages.value.get(ctx)
+      _ctx?.splice(_ctx.findIndex(m => m.id === msgId), 1)
     },
   }
 }

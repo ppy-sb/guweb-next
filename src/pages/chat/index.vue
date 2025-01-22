@@ -14,6 +14,8 @@ const session = useSession()
 const { allMessages, read, initRoom } = useChatStore()
 const app = useNuxtApp()
 
+const route = useRoute('chat')
+
 const main = useTemplateRef('messages')
 const modal = useTemplateRef('modal')
 const modalState = ref(ModalState.Idle)
@@ -22,7 +24,17 @@ const idxMsg = ref<string>()
 const cur = computed(() => allMessages.get(idxMsg.value!))
 const message = ref('')
 
-const friends = ref<{ id: string; name: string; avatarSrc?: string; safeName: string }[]>(await searchUser())
+const friends = ref<{ id: string; name: string; avatarSrc?: string; safeName: string }[]>([])
+
+if (route.query.id) {
+  onMounted(() => {
+    onIdxSelected(route.query.id?.toString() ?? '')
+  })
+}
+
+onMounted(async () => {
+  friends.value = await searchUser()
+})
 
 async function onIdxSelected(id: string) {
   idxMsg.value = id
@@ -146,76 +158,76 @@ const onInputHandle = useDebounceFn(_onInputHandle, 300)
         </form>
       </div>
     </div>
-  </div>
-  <TResponsiveModal
-    ref="modal"
-    v-slot="{ closeModal }"
-    class="my-auto w-full"
-    :class="{
-      'pointer-events-none': modalState === ModalState.Loading,
-    }"
-  >
-    <div class="p-4 bg-base-200 rounded-2xl relative min-w-full md:min-w-1/2 mx-auto h-full">
-      <div
-        class="flex flex-col max-h-full"
-        :class="{
-          'blur-lg': modalState === ModalState.Loading,
-        }"
-      >
-        <div class="card-title mb-2 shrink-0">
-          User
-        </div>
-        <div class="shrink-0 mt-4 md:mt-0 md:mb-4 relative order-2 md:order-1">
-          <div class="absolute inset-y-0 flex items-center pointer-events-none start-0 ps-3">
-            <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
-              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
-            </svg>
+    <TResponsiveModal
+      ref="modal"
+      v-slot="{ closeModal }"
+      class="my-auto w-full"
+      :class="{
+        'pointer-events-none': modalState === ModalState.Loading,
+      }"
+    >
+      <div class="p-4 bg-base-200 rounded-2xl relative min-w-full md:min-w-1/2 mx-auto h-full">
+        <div
+          class="flex flex-col max-h-full"
+          :class="{
+            'blur-lg': modalState === ModalState.Loading,
+          }"
+        >
+          <div class="card-title mb-2 shrink-0">
+            User
           </div>
-          <input
-            id="keyword"
-            name="keyword"
-            type="search"
-            class="block w-full p-4 text-sm text-gray-900 border border-gray-300 rounded-lg ps-10 bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            placeholder="Search User"
-            @input="(v: Event) => onInputHandle((v as any).target.value)"
-          >
-        </div>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 grow overflow-y-auto rounded-xl order-1">
-          <button
-            v-for="user of friends" :key="`relation-@${user.safeName}`"
-            class="p-2 user-list-item bg-base-100 rounded-lg active:bg-base-300 active:scale-[0.98] transition-all duration-[25ms] ease-out"
-            @click="createRoom(user).then(() => closeModal())"
-          >
-            <div class="flex items-center justify-center gap-2 md:justify-start face pointer-events-none">
-              <div class="relative z-10 mask mask-squircle hoverable">
-                <img :alt="user.name" :src="user.avatarSrc" class="pointer-events-none w-14 md:w-[4em]" :error="onLazyImageError">
-              </div>
-              <div class="grow">
-                <h1 class="text-lg text-left">
-                  {{ user.name }}
-                </h1>
-                <div class="flex justify-between w-full items-top">
-                  <div class="text-left g-link-style">
-                    @{{ user.safeName }}
+          <div class="shrink-0 mt-4 md:mt-0 md:mb-4 relative order-2 md:order-1">
+            <div class="absolute inset-y-0 flex items-center pointer-events-none start-0 ps-3">
+              <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+              </svg>
+            </div>
+            <input
+              id="keyword"
+              name="keyword"
+              type="search"
+              class="block w-full p-4 text-sm text-gray-900 border border-gray-300 rounded-lg ps-10 bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              placeholder="Search User"
+              @input="(v: Event) => onInputHandle((v as any).target.value)"
+            >
+          </div>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 grow overflow-y-auto rounded-xl order-1">
+            <button
+              v-for="user of friends" :key="`relation-@${user.safeName}`"
+              class="p-2 user-list-item bg-base-100 rounded-lg active:bg-base-300 active:scale-[0.98] transition-all duration-[25ms] ease-out"
+              @click="createRoom(user).then(() => closeModal())"
+            >
+              <div class="flex items-center justify-center gap-2 md:justify-start face pointer-events-none">
+                <div class="relative z-10 mask mask-squircle hoverable">
+                  <img :alt="user.name" :src="user.avatarSrc" class="pointer-events-none w-14 md:w-[4em]" :error="onLazyImageError">
+                </div>
+                <div class="grow">
+                  <h1 class="text-lg text-left">
+                    {{ user.name }}
+                  </h1>
+                  <div class="flex justify-between w-full items-top">
+                    <div class="text-left g-link-style">
+                      @{{ user.safeName }}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </button>
+            </button>
+          </div>
+        </div>
+        <div
+          class="absolute inset-0 opacity-0 pointer-events-none transition-opacity"
+          :class="{
+            'opacity-100 pointer-events-auto': modalState === ModalState.Loading,
+          }"
+        >
+          <div class="h-full w-full flex items-center justify-center">
+            <span class="loading w-10 h-10" />
+          </div>
         </div>
       </div>
-      <div
-        class="absolute inset-0 opacity-0 pointer-events-none transition-opacity"
-        :class="{
-          'opacity-100 pointer-events-auto': modalState === ModalState.Loading,
-        }"
-      >
-        <div class="h-full w-full flex items-center justify-center">
-          <span class="loading w-10 h-10" />
-        </div>
-      </div>
-    </div>
-  </TResponsiveModal>
+    </TResponsiveModal>
+  </div>
 </template>
 
 <style scoped lang="postcss">
