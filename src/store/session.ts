@@ -93,10 +93,10 @@ export const useSession = defineStore('session', {
       if (!this.events) {
         const { push, clear } = useToast()
         this.events = new EventSource('/api/event/push', { withCredentials: true })
-        push('info', {
-          id: 'i',
-          message: 'connected to chat server.',
-        })
+        // push('info', {
+        //   id: 'i',
+        //   message: 'connected to chat server.',
+        // })
 
         setTimeout(() => clear('info', 'i'), 4500)
       }
