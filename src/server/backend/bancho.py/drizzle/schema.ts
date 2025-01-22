@@ -126,7 +126,7 @@ export const mail = mysqlTable('mail', {
   fromId: int('from_id').notNull(),
   toId: int('to_id').notNull(),
   msg: varchar('msg', { length: 2048 }).notNull(),
-  time: int('time'),
+  time: int('time').$defaultFn(() => Math.floor(new Date().getTime() / 1000)).notNull(),
   read: boolean('read').default(false).notNull(),
 },
 (table) => {

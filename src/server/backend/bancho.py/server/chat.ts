@@ -30,6 +30,7 @@ export class ChatProvider extends Base<Id> implements Base<Id> {
       fromId: from.id,
       toId: to.id,
       msg: content,
+      time: Math.floor(new Date().getTime() / 1000),
     })
   }
 
