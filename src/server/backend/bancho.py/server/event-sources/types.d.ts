@@ -32,7 +32,8 @@ declare module '@rodrigogs/mysql-events' {
     excludedSchemas?: Record<string, boolean>
   }
 
-  declare export default class MySQLEvents extends BaseEventEmitter {
+  declare export default class MySQLEvents {
+    connection: Connection
     constructor(connection: ConstructorParameters<typeof ZongJi>[0], options?: StartOptions): this
     static get EVENTS(): typeof EVENTS
     static get STATEMENTS(): typeof STATEMENTS

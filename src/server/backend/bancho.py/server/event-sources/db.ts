@@ -1,8 +1,10 @@
+import { promisify } from 'node:util'
 import { parseDsnOrThrow } from '@httpx/dsn-parser'
 import MySQLEvents, { type DeleteEvent, type InsertEvent, type RowEvent, type UpdateEvent } from '@rodrigogs/mysql-events'
 import { type InferSelectModel, type Table, getTableColumns, getTableName } from 'drizzle-orm'
-import gucchoBackendConfig from '~~/guccho.backend.config'
+import { config } from '../../env'
 
+const gucchoBackendConfig = config()
 // import * as mysql from '@vlasky/mysql'
 
 const parsed = parseDsnOrThrow(gucchoBackendConfig.replica)
@@ -24,6 +26,10 @@ export const instance = new MySQLEvents(gucchoBackendConfig.replica, {
 })
 
 await instance.start()
+if (gucchoBackendConfig.setReplicaBinlogFormat) {
+  const _query = promisify(instance.connection.query.bind(instance.connection))
+  await _query('SET SESSION binlog_format = \'ROW\';')
+}
 
 instance.on(MySQLEvents.EVENTS.CONNECTION_ERROR, console.error)
 instance.on(MySQLEvents.EVENTS.ZONGJI_ERROR, console.error)
