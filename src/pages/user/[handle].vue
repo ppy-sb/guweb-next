@@ -19,6 +19,7 @@ const app = useNuxtApp()
 const h = useRequestURL()
 const session = useSession()
 const page = userpageStore()
+const router = useRouter()
 
 await page.init({
   mode: h.searchParams.has('mode') ? h.searchParams.get('mode') as Mode : undefined,
@@ -30,12 +31,14 @@ const switcherState = computed(() => `${page.switcher.mode} - ${page.switcher.ru
 const userWithAppName = computed(() => `${page.user?.name} - ${app.$i18n.t('server.name')}`)
 const description = computed(() => switcherState.value)
 
+const url = () => page.user ? `${h.protocol}//${h.host}${router.resolve({ name: 'user-handle', params: { handle: page.user.id } }).fullPath}` : h.href
+
 useSeoMeta({
   description,
   ogTitle: userWithAppName,
   ogDescription: description,
   ogImage: () => page.user?.avatarSrc,
-  ogUrl: () => h.href,
+  ogUrl: url,
   twitterTitle: userWithAppName,
   twitterDescription: description,
   twitterImage: page.user?.avatarSrc,
@@ -45,6 +48,9 @@ useSeoMeta({
 useHead({
   titleTemplate: title => `${title} - ${app.$i18n.t('server.name')}`,
   title: () => page.user?.name || '',
+  link: () => [
+    { rel: 'canonical', href: url() },
+  ],
 })
 
 const visible = reactive({
